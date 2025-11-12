@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>Realtime translator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    body { margin: 24px; background: #f2f8ff; }
+    h2 { margin: 0 0 20px; }
+    .row { display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+    .stack { display:flex; flex-direction:column; gap:12px; }
+    label { font-size:14px; }
+    select, button { padding:10px 14px; font-size:14px; border-radius:10px; border:1px solid #c9d7ee; background:#fff; }
+    button { cursor:pointer; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+    .statusline { display:flex; gap:10px; align-items:center; margin: 4px 0 8px; }
+    .badge { display:inline-flex; align-items:center; gap:6px; padding: 2px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+    .ok  { background:#e8fbef; color:#0a7a2f; border:1px solid #bfe8cb; }
+    .off { background:#fee; color:#822; border:1px solid #f7c8c8; }
+    .cols { display:grid; grid-template-columns: 1fr 1fr; gap:28px; }
+    textarea { width:95%; height:380px; padding:14px; border-radius:14px; border:1px solid #d7e4ff; resize:vertical; background:#fff; }
+    .segbtn { display:inline-flex; gap:8px; border:1px solid #c9d7ee; border-radius:10px; overflow:hidden; }
+    .segbtn > button { border:0; border-right:1px solid #c9d7ee; background:#fff; }
+    .segbtn > button:last-child { border-right:0; }
+    .segbtn > button.active { background:#eaf2ff; font-weight:600; }
+    .muted { opacity:.5; pointer-events:none; }
+    @media (max-width: 980px){ .cols{ grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <h2>Realtime translator</h2>
+
+  <div class="row">
+    <label>Вход:&nbsp;
+      <select id="inLang">
+        <option value="ru-RU" selected>Русский (RU)</option>
+        <option value="en-US">English (EN)</option>
+        <option value="kk-KZ">Қазақ тілі (KK)</option>
+        <option value="uz-UZ">O‘zbek (UZ)</option>
+        <option value="ky-KG">Кыргызча (KY) — только текст</option>
+        <option value="tg-TJ">Тоҷикӣ (TG) — только текст</option>
+      </select>
+    </label>
+
+    <label>Перевод:&nbsp;
+      <select id="outLang">
+        <option value="RU">RU</option>
+        <option value="EN" selected>EN</option>
+        <option value="KK">KK</option>
+        <option value="UZ">UZ</option>
+        <option value="KY">KY</option>
+        <option value="TG">TG</option>
+      </select>
+    </label>
+
+    <div class="segbtn" id="modeSwitch">
+      <button id="modeVoice" class="active">Голос</button>
+      <button id="modeText">Текст</button>
+    </div>
+
+    <button id="btn">▶︎ Начать запись</button>
+  </div>
+
+  <div class="statusline">
+    <span id="micBadge" class="badge off">✖ Mic</span>
+    <span id="wsBadge"  class="badge off">✖ WS</span>
+  </div>
+
+  <div class="cols">
+    <div class="stack">
+      <label>Входящая речь / Текст</label>
+      <textarea id="asr" readonly></textarea>
+    </div>
+    <div class="stack">
+      <label>Перевод</label>
+      <textarea id="mt" readonly></textarea>
+    </div>
+  </div>
+
+  <script>
+    // Константы
+    const WS_ENDPOINT = 'wss://158.160.185.219.sslip.io/ws-local';
+    const SAMPLE_RATE_HZ = 48000;
+    const CHUNK_DURATION_MS  = 100;
+    const BYTES_PER_SAMPLE = 2;
+
+    // Счётчик чанков
+    let chunkSeq = 0;
+
+    // DOM-узлы
+    const recordBtn = document.getElementById('btn');
+    const asrBox = document.getElementById('asr');
+    const mtBox  = document.getElementById('mt');
+    const inputLangSelect = document.getElementById('inLang');
+    const outputLangSelect= document.getElementById('outLang');
+    const micStatusBadge = document.getElementById('micBadge');
+    const wsStatusBadge  = document.getElementById('wsBadge');
+    const voiceModeBtn = document.getElementById('modeVoice');
+    const textModeBtn  = document.getElementById('modeText');
+
+    // Текущий режим
+    let activeMode = 'voice';
+
+    // Статусы
+    function setStatusBadge(el, on){
+      el.className = 'badge ' + (on ? 'ok' : 'off');
+      el.textContent = (on ? '✓' : '✖') + ' ' + (el===micStatusBadge ? 'Mic' : 'WS');
+    }
+
+    // Ресемплер PCM
+    const pcmResampler = {
+      inRate: 48000,
+      outRate: SAMPLE_RATE_HZ,
+      pending: new Uint8Array(0),
+      setInRate(sr){ this.inRate = sr || 48000; },
+      feedFloat32(f32mono){
+        const ratio = this.inRate / this.outRate;
+        const outLen = Math.floor(f32mono.length / ratio);
+        if (outLen <= 0) return;
+        const out = new Int16Array(outLen);
+        for (let i=0;i<outLen;i++){
+          const pos = i * ratio;
+          const i0 = Math.floor(pos);
+          const i1 = Math.min(i0+1, f32mono.length-1);
+          const frac = pos - i0;
+          const s = f32mono[i0]*(1-frac) + f32mono[i1]*frac;
+          const clamped = Math.max(-1, Math.min(1, s));
+          out[i] = (clamped * 32767) | 0;
+        }
+        const u8 = new Uint8Array(out.buffer);
+        if (this.pending.length === 0) this.pending = u8;
+        else {
+          const merged = new Uint8Array(this.pending.length + u8.length);
+          merged.set(this.pending, 0); merged.set(u8, this.pending.length);
+          this.pending = merged;
+        }
+      },
+      takeChunkBytes(){
+        const need = Math.floor((this.outRate * CHUNK_DURATION_MS) / 1000) * BYTES_PER_SAMPLE;
+        if (this.pending.length < need) return null;
+        const chunk = this.pending.slice(0, need);
+        this.pending = this.pending.slice(need);
+        return chunk;
+      },
+      takeAll(){ const c=this.pending; this.pending = new Uint8Array(0); return c; }
+    };
+
+    // Вспомогательное: Uint8Array → base64
+    function toBase64(u8){
+      let bin=''; for(let i=0;i<u8.length;i++) bin += String.fromCharCode(u8[i]);
+      return btoa(bin);
+    }
+
+    // Состояние соединения/аудио
+    let socket = null, micStream=null, audioContext=null, scriptProcessor=null;
+
+    function sendJsonMessage(obj){
+      if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(obj));
+    }
+
+    // Буфер текстов по сегментам
+    const segmentsMap = new Map();
+    let activeSegmentId = null;
+
+    function ensureSegment(id){
+      if (!segmentsMap.has(id)) segmentsMap.set(id, {asr:'', tr:''});
+      return segmentsMap.get(id);
+    }
+    function getSegment(id){
+      return segmentsMap.get(id) || null;
+    }
+    function replaceLastLine(cur, txt){
+      if (!cur) return txt || '';
+      const parts = cur.split('\n');
+      parts[parts.length - 1] = txt || '';
+      return parts.join('\n');
+    }
+    function renderTextPanels(){
+      asrBox.value = [...segmentsMap.values()].map(v => v.asr).join('\n');
+      mtBox.value  = [...segmentsMap.values()].map(v => v.tr ).join('\n');
+    }
+
+    function sendAudioChunk(u8){
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type:'chunk', seq: ++chunkSeq, data: toBase64(u8) }));
+      }
+    }
+
+    // Инициализация аудиозахвата
+    async function initAudioCapture() {
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
+      });
+      setStatusBadge(micStatusBadge, true);
+      audioContext = new (window.AudioContext||window.webkitAudioContext)({ sampleRate: 48000 });
+      pcmResampler.setInRate(audioContext.sampleRate);
+      const source = audioContext.createMediaStreamSource(micStream);
+      scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+      scriptProcessor.onaudioprocess = (e) => {
+        const ch0 = e.inputBuffer.getChannelData(0);
+        const copy = new Float32Array(ch0.length); copy.set(ch0);
+        handleAudioBlock(copy);
+      };
+      source.connect(scriptProcessor);
+      scriptProcessor.connect(audioContext.destination);
+    }
+
+    function handleAudioBlock(f32mono){
+      pcmResampler.feedFloat32(f32mono);
+      let chunk;
+      while ((chunk = pcmResampler.takeChunkBytes())){
+        sendAudioChunk(chunk);
+      }
+    }
+
+    // Голосовой режим: старт/сообщения/стоп
+    async function startVoiceMode(){
+      socket = new WebSocket(WS_ENDPOINT);
+      setStatusBadge(wsStatusBadge, false);
+      socket.onopen = async () => {
+        setStatusBadge(wsStatusBadge, true);
+        await initAudioCapture();
+        chunkSeq = 0; segmentsMap.clear(); activeSegmentId = null; asrBox.value=''; mtBox.value='';
+        const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
+        const dst = (outputLangSelect.value||'').toLowerCase();
+        sendJsonMessage({ type:'start', inLang: src, outLang: dst, mime:'audio/pcm', sampleRate: SAMPLE_RATE_HZ });
+        recordBtn.textContent = '■ Остановить';
+      };
+      socket.onclose = () => { setStatusBadge(wsStatusBadge,false); cleanupAudioCapture(); recordBtn.textContent='▶︎ Начать запись'; };
+      socket.onerror = () => { setStatusBadge(wsStatusBadge,false); };
+      socket.onmessage = handleSocketMessageVoice;
+    }
+
+    function handleSocketMessageVoice(ev){
+      try{
+        const m = JSON.parse(ev.data);
+        if (!m.type) return;
+        if (m.seg_id != null) activeSegmentId = m.seg_id;
+        const seg = ensureSegment(activeSegmentId ?? 1);
+        switch (m.type) {
+          case 'asr_partial':
+            seg.asr = replaceLastLine(seg.asr, m.src || '');
+            break;
+          case 'tr_partial':
+            seg.tr  = replaceLastLine(seg.tr,  m.tr  || '');
+            break;
+          case 'asr_final':
+            seg.asr = replaceLastLine(seg.asr, m.src || '');
+            break;
+          case 'tr_final':
+            seg.tr  = replaceLastLine(seg.tr,  m.tr  || '');
+            break;
+          case 'error':
+            mtBox.value += (mtBox.value.endsWith('\n')?'':'\n') + '[ERR] ' + (m.error || m.message || '') + '\n';
+            break;
+        }
+        renderTextPanels();
+      }catch(_){}
+    }
+
+    async function stopVoiceMode(){
+      const tail = pcmResampler.takeAll();
+      if (tail && tail.length) sendAudioChunk(tail);
+      sendJsonMessage({ type:'stop' });
+      if (socket && socket.readyState === WebSocket.OPEN) socket.close();
+      cleanupAudioCapture();
+      recordBtn.textContent = '▶︎ Начать запись';
+    }
+
+    function cleanupAudioCapture(){
+      try{ if (scriptProcessor){ scriptProcessor.disconnect(); scriptProcessor.onaudioprocess=null; } }catch(_){}
+      try{ if (audioContext){ audioContext.close(); } }catch(_){}
+      try{ if (micStream){ micStream.getTracks().forEach(t=>t.stop()); } }catch(_){}
+      scriptProcessor=null; audioContext=null; micStream=null;
+      setStatusBadge(micStatusBadge,false);
+    }
+
+    // Переключение режима
+    function setActiveMode(newMode){
+      activeMode = newMode;
+      voiceModeBtn.classList.toggle('active', activeMode==='voice');
+      textModeBtn.classList.toggle('active',  activeMode==='text');
+      const v = inputLangSelect.value;
+      const voiceAllowed = !(v.startsWith('ky-') || v.startsWith('tg-'));
+      asrBox.readOnly = activeMode !== 'text';
+      recordBtn.classList.toggle('muted', activeMode==='text' || !voiceAllowed);
+      if (activeMode==='text'){
+        cleanupAudioCapture();
+        if (!socket || socket.readyState !== WebSocket.OPEN){
+          socket = new WebSocket(WS_ENDPOINT);
+          setStatusBadge(wsStatusBadge,false);
+          socket.onopen = () => {
+            setStatusBadge(wsStatusBadge,true);
+            segmentsMap.clear(); activeSegmentId=null; asrBox.value=''; mtBox.value='';
+            const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
+            const dst = (outputLangSelect.value||'').toLowerCase();
+            sendJsonMessage({ type:'text_begin', inLang: src, outLang: dst });
+          };
+          socket.onclose = () => { setStatusBadge(wsStatusBadge,false); };
+          socket.onerror = () => { setStatusBadge(wsStatusBadge,false); };
+          socket.onmessage = handleSocketMessageText;
+        } else {
+          const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
+          const dst = (outputLangSelect.value||'').toLowerCase();
+          sendJsonMessage({ type:'text_begin', inLang: src, outLang: dst });
+        }
+      } else {
+        if (socket && socket.readyState === WebSocket.OPEN) { try{ socket.close(); }catch(_){ } }
+        setStatusBadge(wsStatusBadge,false);
+      }
+    }
+
+    // Обработка сообщений в текстовом режиме
+    function handleSocketMessageText(ev){
+      try{
+        const m = JSON.parse(ev.data);
+        if (!m.type) return;
+        if (m.type === 'tr_partial' || m.type === 'tr_final'){
+          const id = (typeof m.seg_id==='number') ? m.seg_id : 1;
+          const seg = ensureSegment(id);
+          if (m.type === 'tr_partial') seg.tr = replaceLastLine(seg.tr, m.tr || '');
+          else seg.tr = replaceLastLine(seg.tr, m.tr || '');
+          renderTextPanels();
+        }
+      }catch(_){}
+    }
+
+    // Ввод текста (дебаунс/сегментация)
+    let lastTextLineCount = 0;
+    let textInputDebounce = null;
+
+    function handleTextModeInput(){
+      const lines = asrBox.value.split('\n');
+      for (let i=0;i<lines.length;i++){
+        const seg = ensureSegment(i+1);
+        seg.asr = lines[i];
+      }
+      const toDelete = [];
+      segmentsMap.forEach((_, k) => { if (k > lines.length) toDelete.push(k); });
+      toDelete.forEach(k => segmentsMap.delete(k));
+      renderTextPanels();
+      const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
+      const dst = (outputLangSelect.value||'').toLowerCase();
+      const curSegId = Math.max(lines.length, 1);
+      const curLine = lines[lines.length-1] || '';
+      if (textInputDebounce) clearTimeout(textInputDebounce);
+      textInputDebounce = setTimeout(() => {
+        sendJsonMessage({ type:'text_partial', seg_id: curSegId, inLang: src, outLang: dst, text: curLine });
+      }, 120);
+      if (lines.length > lastTextLineCount){
+        const prevId = lines.length - 1;
+        if (prevId >= 1){
+          const prevLine = lines[prevId-1] || '';
+          sendJsonMessage({ type:'text_final', seg_id: prevId, inLang: src, outLang: dst, text: prevLine });
+        }
+      }
+      lastTextLineCount = lines.length;
+    }
+
+    // События UI
+    asrBox.addEventListener('input', () => { if (activeMode==='text') handleTextModeInput(); });
+
+    recordBtn.addEventListener('click', async()=>{
+      if (activeMode!=='voice') return;
+      const v = inputLangSelect.value;
+      const voiceAllowed = !(v.startsWith('ky-') || v.startsWith('tg-'));
+      if (!voiceAllowed) return;
+      if (recordBtn.textContent.includes('Остановить')) await stopVoiceMode();
+      else await startVoiceMode();
+    });
+
+    voiceModeBtn.addEventListener('click', () => setActiveMode('voice'));
+    textModeBtn.addEventListener('click', () => setActiveMode('text'));
+
+    inputLangSelect.addEventListener('change', () => {
+      const voiceAllowed = !(inputLangSelect.value.startsWith('ky-') || inputLangSelect.value.startsWith('tg-'));
+      if (activeMode==='voice' && !voiceAllowed) setActiveMode('text');
+      recordBtn.classList.toggle('muted', activeMode==='text' || !voiceAllowed);
+      if (activeMode==='text') {
+        const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
+        const dst = (outputLangSelect.value||'').toLowerCase();
+        sendJsonMessage({ type:'text_begin', inLang: src, outLang: dst });
+      }
+    });
+
+    outputLangSelect.addEventListener('change', () => {
+      if (activeMode==='text') {
+        const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
+        const dst = (outputLangSelect.value||'').toLowerCase();
+        sendJsonMessage({ type:'text_begin', inLang: src, outLang: dst });
+      }
+    });
+
+    if (location.protocol!=='https:' && location.hostname!=='localhost'){
+      console.warn('Для микрофона нужен HTTPS или localhost.');
+    }
+  </script>
+</body>
+</html>

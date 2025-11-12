@@ -2,401 +2,419 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>Диалоговый ассистент</title>
+  <title>Realtime translator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root {
-      color-scheme: light;
-      font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial;
-    }
-
-    body {
-      margin: 0;
-      background: radial-gradient(circle at top, #edf5ff, #f7fbff 65%, #f6f4ff);
-      color: #1c2635;
-    }
-
-    main {
-      max-width: 1200px;
-      margin: 40px auto;
-      background: #ffffffee;
-      backdrop-filter: blur(12px);
-      border-radius: 24px;
-      padding: 36px;
-      box-shadow: 0 20px 60px rgba(76, 105, 158, 0.15);
-    }
-
-    h1 {
-      margin: 0 0 24px;
-      font-size: 32px;
-      letter-spacing: -0.02em;
-    }
-
-    p.subtitle {
-      margin: -12px 0 32px;
-      color: #516079;
-      font-size: 15px;
-    }
-
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      align-items: center;
-      margin-bottom: 28px;
-    }
-
-    label {
-      font-size: 15px;
-      font-weight: 600;
-      color: #263247;
-    }
-
-    select {
-      margin-left: 8px;
-      padding: 10px 14px;
-      border-radius: 12px;
-      border: 1px solid #d4dff3;
-      font-size: 14px;
-      background: #fff;
-      min-width: 200px;
-    }
-
-    .buttons-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-      width: 100%;
-    }
-
-    button {
-      appearance: none;
-      border: 0;
-      border-radius: 14px;
-      padding: 14px 18px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      background: #f2f6ff;
-      color: #283552;
-      box-shadow: inset 0 0 0 1px rgba(104, 128, 182, 0.25);
-      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 24px rgba(72, 102, 164, 0.18);
-    }
-
-    button.active {
-      background: linear-gradient(135deg, #4f8cff, #678bff);
-      color: white;
-      box-shadow: 0 14px 30px rgba(76, 108, 202, 0.28);
-    }
-
-    .status-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 28px;
-      color: #5c6881;
-      font-size: 14px;
-    }
-
-    .status-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: #edf1fb;
-      border: 1px solid #d7e2ff;
-    }
-
-    .status-chip.on {
-      background: #e6f7f1;
-      border-color: #bce8d6;
-      color: #147b52;
-    }
-
-    .split-pane {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 28px;
-    }
-
-    .pane {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      background: #f7f9ff;
-      border-radius: 20px;
-      padding: 22px;
-      border: 1px solid rgba(167, 188, 235, 0.4);
-      min-height: 520px;
-    }
-
-    .pane h2 {
-      margin: 0;
-      font-size: 18px;
-      letter-spacing: -0.01em;
-    }
-
-    .dialog-list {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      overflow-y: auto;
-    }
-
-    .bubble {
-      max-width: 90%;
-      padding: 14px 16px;
-      border-radius: 18px;
-      line-height: 1.4;
-      background: #ffffff;
-      color: #202d45;
-      box-shadow: 0 10px 26px rgba(61, 92, 152, 0.12);
-    }
-
-    .bubble.from-foreign {
-      align-self: flex-start;
-      border-bottom-left-radius: 6px;
-      background: linear-gradient(135deg, #4f8cff, #6c9cff);
-      color: white;
-    }
-
-    .bubble.from-russian {
-      align-self: flex-end;
-      border-bottom-right-radius: 6px;
-      background: #fff;
-    }
-
-    .empty-state {
-      margin: auto;
-      text-align: center;
-      color: #7784a5;
-      font-size: 15px;
-      max-width: 240px;
-    }
-
-    .empty-state strong {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-    }
-
-    @media (max-width: 640px) {
-      main { padding: 24px 18px; border-radius: 0; margin: 0; }
-      h1 { font-size: 26px; }
-      button { font-size: 14px; }
-      select { min-width: 160px; }
-    }
+    :root { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    body { margin: 24px; background: #f2f8ff; color:#172033; }
+    h2 { margin: 0 0 20px; }
+    h3 { margin: 0; font-size: 18px; }
+    .row { display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+    label { font-size:14px; }
+    select, button { padding:10px 14px; font-size:14px; border-radius:10px; border:1px solid #c9d7ee; background:#fff; }
+    button { cursor:pointer; box-shadow: 0 1px 2px rgba(0,0,0,.05); transition: background .2s, transform .2s; }
+    button:active { transform: translateY(1px); }
+    button.toggle.active { background:#eaf2ff; border-color:#9fb9f7; font-weight:600; }
+    button.toggle.muted, button:disabled { opacity:.45; cursor:not-allowed; box-shadow:none; }
+    .statusline { display:flex; gap:10px; align-items:center; margin: 4px 0 24px; flex-wrap:wrap; }
+    .badge { display:inline-flex; align-items:center; gap:6px; padding: 2px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+    .ok  { background:#e8fbef; color:#0a7a2f; border:1px solid #bfe8cb; }
+    .off { background:#fee; color:#822; border:1px solid #f7c8c8; }
+    .status-text { font-size:14px; color:#3e4a66; }
+    .cols { display:grid; grid-template-columns: 1fr 1fr; gap:28px; }
+    .dialog { min-height:360px; background:#fff; border-radius:16px; border:1px solid #d7e4ff; padding:18px; display:flex; flex-direction:column; gap:14px; box-shadow:0 1px 3px rgba(15,42,93,0.06); overflow-y:auto; }
+    .msg { display:flex; flex-direction:column; gap:6px; padding:10px 14px; border-radius:12px; border:1px solid rgba(156,177,222,.4); background:#f8fbff; }
+    .msg.speaker-foreign { border-color:#9fb9f7; background:#eef3ff; }
+    .msg.speaker-russian { border-color:#8ed4b2; background:#edfbf3; }
+    .msg-meta { font-size:12px; font-weight:600; color:#4861a5; text-transform:uppercase; letter-spacing:0.06em; }
+    .msg-text { font-size:15px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+    .msg.partial .msg-text { opacity:.75; }
+    .empty { font-size:14px; color:#6e7da5; }
+    @media (max-width: 980px){ .cols{ grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Голосовой ассистент переводчика</h1>
-    <p class="subtitle">Выберите язык собеседника и управляйте записью каждой реплики. Диалог отображается отдельно на выбранном языке и на русском.</p>
+  <h2>Голосовой ассистент переводчик</h2>
 
-    <section class="controls">
-      <label>
-        Язык собеседника
-        <select id="languageSelect" aria-label="Выбор языка собеседника">
-          <option value="kk" data-display="Казахский">Қазақ тілі (Казахский)</option>
-          <option value="en" data-display="Английский">English (Английский)</option>
-          <option value="uz" data-display="Узбекский">O‘zbek tili (Узбекский)</option>
-          <option value="ky" data-display="Киргизский">Кыргызча (Киргизский)</option>
-          <option value="de" data-display="Немецкий">Deutsch (Немецкий)</option>
-          <option value="zh" data-display="Китайский">中文 (Китайский)</option>
-        </select>
-      </label>
-    </section>
+  <div class="row">
+    <label>Язык собеседника:&nbsp;
+      <select id="partnerLang">
+        <option value="kk-KZ" selected>Қазақ тілі (KK)</option>
+        <option value="en-US">English (EN)</option>
+        <option value="uz-UZ">O‘zbek (UZ)</option>
+        <option value="ky-KG">Кыргызча (KY) — только текст</option>
+        <option value="tg-TJ">Тоҷикӣ (TG) — только текст</option>
+        <option value="de-DE">Deutsch (DE)</option>
+        <option value="zh-CN">中文 (ZH)</option>
+      </select>
+    </label>
+  </div>
 
-    <div class="buttons-grid">
-      <button id="foreignStartBtn">▶︎ Вкл запись на выбранном языке</button>
-      <button id="foreignStopBtn">■ Выкл запись на выбранном языке</button>
-      <button id="russianStartBtn">▶︎ Вкл запись на русском</button>
-      <button id="russianStopBtn">■ Выкл запись на русском</button>
-    </div>
+  <div class="row">
+    <button id="partnerBtn" class="toggle">▶︎ Собеседник говорит</button>
+    <button id="russianBtn" class="toggle">▶︎ Русский говорит</button>
+  </div>
 
-    <div class="status-row" aria-live="polite">
-      <span id="foreignStatus" class="status-chip">Иностранный собеседник: ожидание</span>
-      <span id="russianStatus" class="status-chip">Русский собеседник: ожидание</span>
-    </div>
+  <div class="statusline">
+    <span id="micBadge" class="badge off">✖ Mic</span>
+    <span id="wsBadge"  class="badge off">✖ WS</span>
+    <span id="activeStatus" class="status-text">Ожидание</span>
+  </div>
 
-    <section class="split-pane" aria-label="Диалоги">
-      <div class="pane" aria-live="polite" aria-label="Диалог на выбранном языке">
-        <h2 id="foreignPaneTitle">Диалог на казахском</h2>
-        <div id="foreignDialog" class="dialog-list">
-          <div class="empty-state">
-            <strong>Пока что пусто</strong>
-            Нажмите «Вкл запись» для начала новой реплики.
-          </div>
-        </div>
+  <div class="cols">
+    <div class="stack">
+      <h3 id="foreignTitle">Диалог на <span id="foreignLangLabel">Қазақ тілі (KK)</span></h3>
+      <div id="foreignLog" class="dialog">
+        <div class="empty">Пока нет реплик</div>
       </div>
-
-      <div class="pane" aria-live="polite" aria-label="Диалог на русском языке">
-        <h2>Диалог на русском</h2>
-        <div id="russianDialog" class="dialog-list">
-          <div class="empty-state">
-            <strong>Пока что пусто</strong>
-            После завершения реплики перевод появится здесь.
-          </div>
-        </div>
+    </div>
+    <div class="stack">
+      <h3>Диалог на русском</h3>
+      <div id="russianLog" class="dialog">
+        <div class="empty">Пока нет реплик</div>
       </div>
-    </section>
-  </main>
+    </div>
+  </div>
 
   <script>
-    const languageSelect = document.getElementById('languageSelect');
-    const foreignStartBtn = document.getElementById('foreignStartBtn');
-    const foreignStopBtn = document.getElementById('foreignStopBtn');
-    const russianStartBtn = document.getElementById('russianStartBtn');
-    const russianStopBtn = document.getElementById('russianStopBtn');
-    const foreignStatus = document.getElementById('foreignStatus');
-    const russianStatus = document.getElementById('russianStatus');
-    const foreignDialog = document.getElementById('foreignDialog');
-    const russianDialog = document.getElementById('russianDialog');
-    const foreignPaneTitle = document.getElementById('foreignPaneTitle');
+    const WS_ENDPOINT = 'wss://158.160.185.219.sslip.io/ws-local';
+    const SAMPLE_RATE_HZ = 48000;
+    const CHUNK_DURATION_MS  = 100;
+    const BYTES_PER_SAMPLE = 2;
 
-    let isForeignRecording = false;
-    let isRussianRecording = false;
+    let chunkSeq = 0;
 
-    const conversation = [];
+    const partnerLangSelect = document.getElementById('partnerLang');
+    const partnerBtn = document.getElementById('partnerBtn');
+    const russianBtn = document.getElementById('russianBtn');
+    const micStatusBadge = document.getElementById('micBadge');
+    const wsStatusBadge  = document.getElementById('wsBadge');
+    const activeStatus = document.getElementById('activeStatus');
+    const foreignLangLabel = document.getElementById('foreignLangLabel');
+    const foreignLog = document.getElementById('foreignLog');
+    const russianLog = document.getElementById('russianLog');
 
-    languageSelect.addEventListener('change', () => {
-      const option = languageSelect.options[languageSelect.selectedIndex];
-      foreignPaneTitle.textContent = `Диалог на ${option.dataset.display.toLowerCase()}`;
-      if (isForeignRecording) {
-        foreignStatus.textContent = `${option.dataset.display}: запись идёт…`;
+    function setStatusBadge(el, on){
+      el.className = 'badge ' + (on ? 'ok' : 'off');
+      el.textContent = (on ? '✓' : '✖') + ' ' + (el===micStatusBadge ? 'Mic' : 'WS');
+    }
+
+    const pcmResampler = {
+      inRate: 48000,
+      outRate: SAMPLE_RATE_HZ,
+      pending: new Uint8Array(0),
+      setInRate(sr){ this.inRate = sr || 48000; },
+      feedFloat32(f32mono){
+        const ratio = this.inRate / this.outRate;
+        const outLen = Math.floor(f32mono.length / ratio);
+        if (outLen <= 0) return;
+        const out = new Int16Array(outLen);
+        for (let i=0;i<outLen;i++){
+          const pos = i * ratio;
+          const i0 = Math.floor(pos);
+          const i1 = Math.min(i0+1, f32mono.length-1);
+          const frac = pos - i0;
+          const s = f32mono[i0]*(1-frac) + f32mono[i1]*frac;
+          const clamped = Math.max(-1, Math.min(1, s));
+          out[i] = (clamped * 32767) | 0;
+        }
+        const u8 = new Uint8Array(out.buffer);
+        if (this.pending.length === 0) this.pending = u8;
+        else {
+          const merged = new Uint8Array(this.pending.length + u8.length);
+          merged.set(this.pending, 0); merged.set(u8, this.pending.length);
+          this.pending = merged;
+        }
+      },
+      takeChunkBytes(){
+        const need = Math.floor((this.outRate * CHUNK_DURATION_MS) / 1000) * BYTES_PER_SAMPLE;
+        if (this.pending.length < need) return null;
+        const chunk = this.pending.slice(0, need);
+        this.pending = this.pending.slice(need);
+        return chunk;
+      },
+      takeAll(){ const c=this.pending; this.pending = new Uint8Array(0); return c; }
+    };
+
+    function toBase64(u8){
+      let bin=''; for(let i=0;i<u8.length;i++) bin += String.fromCharCode(u8[i]);
+      return btoa(bin);
+    }
+
+    let socket = null, micStream=null, audioContext=null, scriptProcessor=null;
+    let currentDirection = null;
+    let sessionCounter = 0;
+    let activeSessionId = null;
+    let activeSegmentId = null;
+
+    const sessionDirectionMap = new Map();
+    const segmentsIndex = new Map();
+    const conversationOrder = [];
+
+    function makeSegmentKey(sessionId, segId){
+      return sessionId + ':' + (segId ?? 1);
+    }
+
+    function ensureSegment(sessionId, segId){
+      if (!sessionId) return null;
+      const id = segId ?? activeSegmentId ?? 1;
+      const key = makeSegmentKey(sessionId, id);
+      if (!segmentsIndex.has(key)){
+        const seg = { sessionId, segId: id, speaker: sessionDirectionMap.get(sessionId) || 'foreign', src:'', tr:'', finalSrc:false, finalTr:false };
+        segmentsIndex.set(key, seg);
+        conversationOrder.push(seg);
       }
-    });
-
-    function updateStatus(chip, isRecording, label) {
-      chip.classList.toggle('on', isRecording);
-      chip.textContent = isRecording ? `${label}: запись идёт…` : `${label}: ожидание`;
+      return segmentsIndex.get(key);
     }
 
-    function toggleButtonState(button, isActive) {
-      button.classList.toggle('active', isActive);
-      button.disabled = isActive;
-    }
-
-    function ensureDialogPlaceholder(container) {
-      if (!container.querySelector('.bubble') && !container.querySelector('.empty-state')) {
-        const empty = document.createElement('div');
-        empty.className = 'empty-state';
-        empty.innerHTML = '<strong>Пока что пусто</strong>Нажмите «Вкл запись» для начала новой реплики.';
-        container.appendChild(empty);
-      }
-    }
-
-    function clearPlaceholders() {
-      [foreignDialog, russianDialog].forEach(container => {
-        const empty = container.querySelector('.empty-state');
-        if (empty) empty.remove();
+    function renderConversation(){
+      const escapeMap = new Map([
+        ['&', '&amp;'],
+        ['<', '&lt;'],
+        ['>', '&gt;'],
+        ['"', '&quot;'],
+        ["'", '&#39;']
+      ]);
+      const escapeHtml = (s) => (s || '').replace(/[&<>"']/g, c => escapeMap.get(c));
+      const foreignItems = [];
+      const russianItems = [];
+      conversationOrder.forEach(seg => {
+        const speaker = seg.speaker;
+        const isForeign = speaker === 'foreign';
+        const foreignText = isForeign ? seg.src : seg.tr;
+        const russianText = isForeign ? seg.tr : seg.src;
+        const stateClass = (seg.finalSrc && seg.finalTr) ? '' : ' partial';
+        const foreignMeta = isForeign ? 'Собеседник' : 'Русский';
+        const russianMeta = isForeign ? 'Русский' : 'Собеседник';
+        const foreignHtml = foreignText ? '<div class="msg'+stateClass+' speaker-' + (isForeign ? 'foreign' : 'russian') + '"><div class="msg-meta">' + foreignMeta + '</div><div class="msg-text">' + escapeHtml(foreignText) + '</div></div>' : '';
+        const russianHtml = russianText ? '<div class="msg'+stateClass+' speaker-' + (isForeign ? 'foreign' : 'russian') + '"><div class="msg-meta">' + russianMeta + '</div><div class="msg-text">' + escapeHtml(russianText) + '</div></div>' : '';
+        if (foreignHtml) foreignItems.push(foreignHtml);
+        if (russianHtml) russianItems.push(russianHtml);
       });
+      foreignLog.innerHTML = foreignItems.length ? foreignItems.join('') : '<div class="empty">Пока нет реплик</div>';
+      russianLog.innerHTML = russianItems.length ? russianItems.join('') : '<div class="empty">Пока нет реплик</div>';
+      foreignLog.scrollTop = foreignLog.scrollHeight;
+      russianLog.scrollTop = russianLog.scrollHeight;
     }
 
-    function renderConversation() {
-      foreignDialog.innerHTML = '';
-      russianDialog.innerHTML = '';
+    function sendJsonMessage(obj){
+      if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(obj));
+    }
 
-      if (conversation.length === 0) {
-        ensureDialogPlaceholder(foreignDialog);
-        ensureDialogPlaceholder(russianDialog);
-        return;
+    function sendAudioChunk(u8){
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type:'chunk', seq: ++chunkSeq, data: toBase64(u8) }));
       }
+    }
 
-      conversation.forEach(entry => {
-        const foreignBubble = document.createElement('div');
-        foreignBubble.className = 'bubble ' + (entry.direction === 'foreign' ? 'from-foreign' : 'from-russian');
-        foreignBubble.textContent = entry.foreignText || '—';
-
-        const russianBubble = document.createElement('div');
-        russianBubble.className = 'bubble ' + (entry.direction === 'russian' ? 'from-russian' : 'from-foreign');
-        russianBubble.textContent = entry.russianText || '—';
-
-        foreignDialog.appendChild(foreignBubble);
-        russianDialog.appendChild(russianBubble);
+    async function initAudioCapture() {
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
       });
-    }
-
-    function promptReplica(direction) {
-      const languageName = languageSelect.options[languageSelect.selectedIndex].dataset.display;
-      const isForeign = direction === 'foreign';
-
-      const originalPrompt = isForeign
-        ? `Введите текст реплики на ${languageName.toLowerCase()}:`
-        : 'Введите текст реплики на русском:';
-      const translationPrompt = isForeign
-        ? 'Введите перевод реплики на русский:'
-        : `Введите перевод реплики на ${languageName.toLowerCase()}:`;
-
-      const originalText = window.prompt(originalPrompt, '');
-      if (originalText === null) {
-        return; // отмена ввода
-      }
-
-      const translatedText = window.prompt(translationPrompt, '');
-      if (translatedText === null) {
-        return; // отмена ввода
-      }
-
-      const entry = {
-        direction,
-        foreignText: isForeign ? originalText.trim() : translatedText.trim(),
-        russianText: isForeign ? translatedText.trim() : originalText.trim()
+      setStatusBadge(micStatusBadge, true);
+      audioContext = new (window.AudioContext||window.webkitAudioContext)({ sampleRate: 48000 });
+      pcmResampler.setInRate(audioContext.sampleRate);
+      const source = audioContext.createMediaStreamSource(micStream);
+      scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+      scriptProcessor.onaudioprocess = (e) => {
+        const ch0 = e.inputBuffer.getChannelData(0);
+        const copy = new Float32Array(ch0.length); copy.set(ch0);
+        handleAudioBlock(copy);
       };
-
-      conversation.push(entry);
-      clearPlaceholders();
-      renderConversation();
+      source.connect(scriptProcessor);
+      scriptProcessor.connect(audioContext.destination);
     }
 
-    foreignStartBtn.addEventListener('click', () => {
-      if (isForeignRecording) return;
-      isForeignRecording = true;
-      toggleButtonState(foreignStartBtn, true);
-      foreignStopBtn.disabled = false;
-      updateStatus(foreignStatus, true, languageSelect.options[languageSelect.selectedIndex].dataset.display);
+    function handleAudioBlock(f32mono){
+      pcmResampler.feedFloat32(f32mono);
+      let chunk;
+      while ((chunk = pcmResampler.takeChunkBytes())){
+        sendAudioChunk(chunk);
+      }
+    }
+
+    function replaceLastLine(cur, txt){
+      if (!cur) return txt || '';
+      const parts = cur.split('\n');
+      parts[parts.length - 1] = txt || '';
+      return parts.join('\n');
+    }
+
+    function handleSocketMessageVoice(ev, sessionId){
+      try{
+        const m = JSON.parse(ev.data);
+        if (!m.type || sessionId !== activeSessionId) return;
+        if (m.seg_id != null) activeSegmentId = m.seg_id;
+        const seg = ensureSegment(sessionId, m.seg_id);
+        if (!seg) return;
+        switch (m.type) {
+          case 'asr_partial':
+            seg.src = replaceLastLine(seg.src, m.src || '');
+            seg.finalSrc = false;
+            break;
+          case 'tr_partial':
+            seg.tr  = replaceLastLine(seg.tr,  m.tr  || '');
+            seg.finalTr = false;
+            break;
+          case 'asr_final':
+            seg.src = replaceLastLine(seg.src, m.src || '');
+            seg.finalSrc = true;
+            break;
+          case 'tr_final':
+            seg.tr  = replaceLastLine(seg.tr,  m.tr  || '');
+            seg.finalTr = true;
+            break;
+          case 'error':
+            seg.tr = (seg.tr ? seg.tr + '\n' : '') + '[ERR] ' + (m.error || m.message || '');
+            seg.finalTr = true;
+            break;
+        }
+        renderConversation();
+      }catch(_){ }
+    }
+
+    function cleanupAudioCapture(){
+      try{ if (scriptProcessor){ scriptProcessor.disconnect(); scriptProcessor.onaudioprocess=null; } }catch(_){ }
+      try{ if (audioContext){ audioContext.close(); } }catch(_){ }
+      try{ if (micStream){ micStream.getTracks().forEach(t=>t.stop()); } }catch(_){ }
+      scriptProcessor=null; audioContext=null; micStream=null;
+      setStatusBadge(micStatusBadge,false);
+    }
+
+    function updateButtonsState(direction){
+      const partnerVoiceAllowed = !(partnerLangSelect.value.startsWith('ky-') || partnerLangSelect.value.startsWith('tg-'));
+      const effectiveDirection = (!partnerVoiceAllowed && direction === 'foreign') ? null : direction;
+      partnerBtn.disabled = !partnerVoiceAllowed && effectiveDirection !== 'foreign';
+      partnerBtn.classList.toggle('muted', !partnerVoiceAllowed && effectiveDirection !== 'foreign');
+      partnerBtn.title = partnerVoiceAllowed ? '' : 'Для этого языка доступен только текстовый режим';
+      partnerBtn.classList.toggle('active', effectiveDirection === 'foreign');
+      russianBtn.classList.toggle('active', effectiveDirection === 'russian');
+      partnerBtn.textContent = effectiveDirection === 'foreign' ? '■ Собеседник говорит' : '▶︎ Собеседник говорит';
+      russianBtn.textContent = effectiveDirection === 'russian' ? '■ Русский говорит' : '▶︎ Русский говорит';
+    }
+
+    function updateStatusText(direction){
+      if (direction === 'foreign') activeStatus.textContent = 'Запись собеседника…';
+      else if (direction === 'russian') activeStatus.textContent = 'Запись русского участника…';
+      else activeStatus.textContent = 'Ожидание';
+    }
+
+    async function startRecording(direction){
+      if (currentDirection === direction) return;
+      const partnerVoiceAllowed = !(partnerLangSelect.value.startsWith('ky-') || partnerLangSelect.value.startsWith('tg-'));
+      if (direction === 'foreign' && !partnerVoiceAllowed) return;
+      if (socket && socket.readyState !== WebSocket.CLOSED) {
+        try { socket.close(); } catch(_){ }
+      }
+      const sessionId = ++sessionCounter;
+      activeSessionId = sessionId;
+      currentDirection = direction;
+      activeSegmentId = null;
+      sessionDirectionMap.set(sessionId, direction);
+      updateButtonsState(direction);
+      updateStatusText(direction);
+      const inLang = direction === 'foreign' ? (partnerLangSelect.value.split('-')[0] || 'kk').toLowerCase() : 'ru';
+      const outLang = direction === 'foreign' ? 'ru' : (partnerLangSelect.value.split('-')[0] || 'kk').toLowerCase();
+      socket = new WebSocket(WS_ENDPOINT);
+      const localSocket = socket;
+      setStatusBadge(wsStatusBadge, false);
+      localSocket.addEventListener('message', (ev) => handleSocketMessageVoice(ev, sessionId));
+      localSocket.addEventListener('error', () => {
+        if (sessionId === activeSessionId){ setStatusBadge(wsStatusBadge,false); }
+      });
+      localSocket.addEventListener('close', () => {
+        finalizeStop(sessionId);
+      });
+      localSocket.addEventListener('open', async () => {
+        if (sessionId !== activeSessionId) return;
+        setStatusBadge(wsStatusBadge, true);
+        try {
+          await initAudioCapture();
+        } catch (err){
+          activeStatus.textContent = 'Нет доступа к микрофону';
+          setStatusBadge(micStatusBadge, false);
+          try { localSocket.close(); } catch(_){ }
+          return;
+        }
+        chunkSeq = 0;
+        sendJsonMessage({ type:'start', inLang, outLang, mime:'audio/pcm', sampleRate: SAMPLE_RATE_HZ });
+      });
+    }
+
+    function finalizeStop(sessionId){
+      if (sessionId != null && activeSessionId != null && sessionId !== activeSessionId) return;
+      cleanupAudioCapture();
+      setStatusBadge(wsStatusBadge,false);
+      currentDirection = null;
+      activeSessionId = null;
+      activeSegmentId = null;
+      chunkSeq = 0;
+      socket = null;
+      updateButtonsState(null);
+      updateStatusText(null);
+    }
+
+    let stopInProgress = false;
+
+    async function stopRecording(){
+      if (!currentDirection || stopInProgress) return;
+      stopInProgress = true;
+      const sessionId = activeSessionId;
+      const tail = pcmResampler.takeAll();
+      if (tail && tail.length) sendAudioChunk(tail);
+      sendJsonMessage({ type:'stop' });
+      if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+        const wsForStop = socket;
+        await new Promise((resolve) => {
+          const onClose = () => resolve();
+          wsForStop.addEventListener('close', onClose, { once: true });
+          try { wsForStop.close(); }
+          catch(_){ wsForStop.removeEventListener('close', onClose); finalizeStop(sessionId); resolve(); }
+        });
+      } else {
+        finalizeStop(sessionId);
+      }
+      stopInProgress = false;
+    }
+
+    partnerBtn.addEventListener('click', async () => {
+      if (currentDirection === 'foreign') {
+        await stopRecording();
+      } else {
+        await stopRecording();
+        await startRecording('foreign');
+      }
     });
 
-    foreignStopBtn.addEventListener('click', () => {
-      if (!isForeignRecording) return;
-      isForeignRecording = false;
-      toggleButtonState(foreignStartBtn, false);
-      updateStatus(foreignStatus, false, languageSelect.options[languageSelect.selectedIndex].dataset.display);
-      promptReplica('foreign');
+    russianBtn.addEventListener('click', async () => {
+      if (currentDirection === 'russian') {
+        await stopRecording();
+      } else {
+        await stopRecording();
+        await startRecording('russian');
+      }
     });
 
-    russianStartBtn.addEventListener('click', () => {
-      if (isRussianRecording) return;
-      isRussianRecording = true;
-      toggleButtonState(russianStartBtn, true);
-      russianStopBtn.disabled = false;
-      updateStatus(russianStatus, true, 'Русский собеседник');
+    partnerLangSelect.addEventListener('change', async () => {
+      const opt = partnerLangSelect.options[partnerLangSelect.selectedIndex];
+      const label = opt ? opt.textContent.replace(' — только текст','') : '';
+      if (foreignLangLabel) foreignLangLabel.textContent = label;
+      if (currentDirection) {
+        await stopRecording();
+      }
+      sessionDirectionMap.clear();
+      conversationOrder.length = 0;
+      segmentsIndex.clear();
+      renderConversation();
+      updateButtonsState(null);
     });
 
-    russianStopBtn.addEventListener('click', () => {
-      if (!isRussianRecording) return;
-      isRussianRecording = false;
-      toggleButtonState(russianStartBtn, false);
-      updateStatus(russianStatus, false, 'Русский собеседник');
-      promptReplica('russian');
-    });
+    updateButtonsState(null);
+    renderConversation();
 
-    foreignStopBtn.disabled = true;
-    russianStopBtn.disabled = true;
-
-    ensureDialogPlaceholder(foreignDialog);
-    ensureDialogPlaceholder(russianDialog);
+    if (location.protocol!=='https:' && location.hostname!=='localhost'){
+      console.warn('Для микрофона нужен HTTPS или localhost.');
+    }
   </script>
 </body>
 </html>

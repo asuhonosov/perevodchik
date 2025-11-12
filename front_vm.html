@@ -2,398 +2,401 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>Realtime translator</title>
+  <title>Диалоговый ассистент</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-    body { margin: 24px; background: #f2f8ff; }
-    h2 { margin: 0 0 20px; }
-    .row { display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
-    .stack { display:flex; flex-direction:column; gap:12px; }
-    label { font-size:14px; }
-    select, button { padding:10px 14px; font-size:14px; border-radius:10px; border:1px solid #c9d7ee; background:#fff; }
-    button { cursor:pointer; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
-    .statusline { display:flex; gap:10px; align-items:center; margin: 4px 0 8px; }
-    .badge { display:inline-flex; align-items:center; gap:6px; padding: 2px 10px; border-radius:999px; font-size:12px; font-weight:600; }
-    .ok  { background:#e8fbef; color:#0a7a2f; border:1px solid #bfe8cb; }
-    .off { background:#fee; color:#822; border:1px solid #f7c8c8; }
-    .cols { display:grid; grid-template-columns: 1fr 1fr; gap:28px; }
-    textarea { width:95%; height:380px; padding:14px; border-radius:14px; border:1px solid #d7e4ff; resize:vertical; background:#fff; }
-    .segbtn { display:inline-flex; gap:8px; border:1px solid #c9d7ee; border-radius:10px; overflow:hidden; }
-    .segbtn > button { border:0; border-right:1px solid #c9d7ee; background:#fff; }
-    .segbtn > button:last-child { border-right:0; }
-    .segbtn > button.active { background:#eaf2ff; font-weight:600; }
-    .muted { opacity:.5; pointer-events:none; }
-    @media (max-width: 980px){ .cols{ grid-template-columns:1fr; } }
+    :root {
+      color-scheme: light;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #edf5ff, #f7fbff 65%, #f6f4ff);
+      color: #1c2635;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 40px auto;
+      background: #ffffffee;
+      backdrop-filter: blur(12px);
+      border-radius: 24px;
+      padding: 36px;
+      box-shadow: 0 20px 60px rgba(76, 105, 158, 0.15);
+    }
+
+    h1 {
+      margin: 0 0 24px;
+      font-size: 32px;
+      letter-spacing: -0.02em;
+    }
+
+    p.subtitle {
+      margin: -12px 0 32px;
+      color: #516079;
+      font-size: 15px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+
+    label {
+      font-size: 15px;
+      font-weight: 600;
+      color: #263247;
+    }
+
+    select {
+      margin-left: 8px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid #d4dff3;
+      font-size: 14px;
+      background: #fff;
+      min-width: 200px;
+    }
+
+    .buttons-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      width: 100%;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #f2f6ff;
+      color: #283552;
+      box-shadow: inset 0 0 0 1px rgba(104, 128, 182, 0.25);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(72, 102, 164, 0.18);
+    }
+
+    button.active {
+      background: linear-gradient(135deg, #4f8cff, #678bff);
+      color: white;
+      box-shadow: 0 14px 30px rgba(76, 108, 202, 0.28);
+    }
+
+    .status-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 28px;
+      color: #5c6881;
+      font-size: 14px;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: #edf1fb;
+      border: 1px solid #d7e2ff;
+    }
+
+    .status-chip.on {
+      background: #e6f7f1;
+      border-color: #bce8d6;
+      color: #147b52;
+    }
+
+    .split-pane {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 28px;
+    }
+
+    .pane {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: #f7f9ff;
+      border-radius: 20px;
+      padding: 22px;
+      border: 1px solid rgba(167, 188, 235, 0.4);
+      min-height: 520px;
+    }
+
+    .pane h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.01em;
+    }
+
+    .dialog-list {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+    }
+
+    .bubble {
+      max-width: 90%;
+      padding: 14px 16px;
+      border-radius: 18px;
+      line-height: 1.4;
+      background: #ffffff;
+      color: #202d45;
+      box-shadow: 0 10px 26px rgba(61, 92, 152, 0.12);
+    }
+
+    .bubble.from-foreign {
+      align-self: flex-start;
+      border-bottom-left-radius: 6px;
+      background: linear-gradient(135deg, #4f8cff, #6c9cff);
+      color: white;
+    }
+
+    .bubble.from-russian {
+      align-self: flex-end;
+      border-bottom-right-radius: 6px;
+      background: #fff;
+    }
+
+    .empty-state {
+      margin: auto;
+      text-align: center;
+      color: #7784a5;
+      font-size: 15px;
+      max-width: 240px;
+    }
+
+    .empty-state strong {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+      main { padding: 24px 18px; border-radius: 0; margin: 0; }
+      h1 { font-size: 26px; }
+      button { font-size: 14px; }
+      select { min-width: 160px; }
+    }
   </style>
 </head>
 <body>
-  <h2>Realtime translator</h2>
+  <main>
+    <h1>Голосовой ассистент переводчика</h1>
+    <p class="subtitle">Выберите язык собеседника и управляйте записью каждой реплики. Диалог отображается отдельно на выбранном языке и на русском.</p>
 
-  <div class="row">
-    <label>Вход:&nbsp;
-      <select id="inLang">
-        <option value="ru-RU" selected>Русский (RU)</option>
-        <option value="en-US">English (EN)</option>
-        <option value="kk-KZ">Қазақ тілі (KK)</option>
-        <option value="uz-UZ">O‘zbek (UZ)</option>
-        <option value="ky-KG">Кыргызча (KY) — только текст</option>
-        <option value="tg-TJ">Тоҷикӣ (TG) — только текст</option>
-      </select>
-    </label>
+    <section class="controls">
+      <label>
+        Язык собеседника
+        <select id="languageSelect" aria-label="Выбор языка собеседника">
+          <option value="kk" data-display="Казахский">Қазақ тілі (Казахский)</option>
+          <option value="en" data-display="Английский">English (Английский)</option>
+          <option value="uz" data-display="Узбекский">O‘zbek tili (Узбекский)</option>
+          <option value="ky" data-display="Киргизский">Кыргызча (Киргизский)</option>
+          <option value="de" data-display="Немецкий">Deutsch (Немецкий)</option>
+          <option value="zh" data-display="Китайский">中文 (Китайский)</option>
+        </select>
+      </label>
+    </section>
 
-    <label>Перевод:&nbsp;
-      <select id="outLang">
-        <option value="RU">RU</option>
-        <option value="EN" selected>EN</option>
-        <option value="KK">KK</option>
-        <option value="UZ">UZ</option>
-        <option value="KY">KY</option>
-        <option value="TG">TG</option>
-      </select>
-    </label>
-
-    <div class="segbtn" id="modeSwitch">
-      <button id="modeVoice" class="active">Голос</button>
-      <button id="modeText">Текст</button>
+    <div class="buttons-grid">
+      <button id="foreignStartBtn">▶︎ Вкл запись на выбранном языке</button>
+      <button id="foreignStopBtn">■ Выкл запись на выбранном языке</button>
+      <button id="russianStartBtn">▶︎ Вкл запись на русском</button>
+      <button id="russianStopBtn">■ Выкл запись на русском</button>
     </div>
 
-    <button id="btn">▶︎ Начать запись</button>
-  </div>
-
-  <div class="statusline">
-    <span id="micBadge" class="badge off">✖ Mic</span>
-    <span id="wsBadge"  class="badge off">✖ WS</span>
-  </div>
-
-  <div class="cols">
-    <div class="stack">
-      <label>Входящая речь / Текст</label>
-      <textarea id="asr" readonly></textarea>
+    <div class="status-row" aria-live="polite">
+      <span id="foreignStatus" class="status-chip">Иностранный собеседник: ожидание</span>
+      <span id="russianStatus" class="status-chip">Русский собеседник: ожидание</span>
     </div>
-    <div class="stack">
-      <label>Перевод</label>
-      <textarea id="mt" readonly></textarea>
-    </div>
-  </div>
+
+    <section class="split-pane" aria-label="Диалоги">
+      <div class="pane" aria-live="polite" aria-label="Диалог на выбранном языке">
+        <h2 id="foreignPaneTitle">Диалог на казахском</h2>
+        <div id="foreignDialog" class="dialog-list">
+          <div class="empty-state">
+            <strong>Пока что пусто</strong>
+            Нажмите «Вкл запись» для начала новой реплики.
+          </div>
+        </div>
+      </div>
+
+      <div class="pane" aria-live="polite" aria-label="Диалог на русском языке">
+        <h2>Диалог на русском</h2>
+        <div id="russianDialog" class="dialog-list">
+          <div class="empty-state">
+            <strong>Пока что пусто</strong>
+            После завершения реплики перевод появится здесь.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <script>
-    // Константы
-    const WS_ENDPOINT = 'wss://158.160.185.219.sslip.io/ws-local';
-    const SAMPLE_RATE_HZ = 48000;
-    const CHUNK_DURATION_MS  = 100;
-    const BYTES_PER_SAMPLE = 2;
+    const languageSelect = document.getElementById('languageSelect');
+    const foreignStartBtn = document.getElementById('foreignStartBtn');
+    const foreignStopBtn = document.getElementById('foreignStopBtn');
+    const russianStartBtn = document.getElementById('russianStartBtn');
+    const russianStopBtn = document.getElementById('russianStopBtn');
+    const foreignStatus = document.getElementById('foreignStatus');
+    const russianStatus = document.getElementById('russianStatus');
+    const foreignDialog = document.getElementById('foreignDialog');
+    const russianDialog = document.getElementById('russianDialog');
+    const foreignPaneTitle = document.getElementById('foreignPaneTitle');
 
-    // Счётчик чанков
-    let chunkSeq = 0;
+    let isForeignRecording = false;
+    let isRussianRecording = false;
 
-    // DOM-узлы
-    const recordBtn = document.getElementById('btn');
-    const asrBox = document.getElementById('asr');
-    const mtBox  = document.getElementById('mt');
-    const inputLangSelect = document.getElementById('inLang');
-    const outputLangSelect= document.getElementById('outLang');
-    const micStatusBadge = document.getElementById('micBadge');
-    const wsStatusBadge  = document.getElementById('wsBadge');
-    const voiceModeBtn = document.getElementById('modeVoice');
-    const textModeBtn  = document.getElementById('modeText');
+    const conversation = [];
 
-    // Текущий режим
-    let activeMode = 'voice';
+    languageSelect.addEventListener('change', () => {
+      const option = languageSelect.options[languageSelect.selectedIndex];
+      foreignPaneTitle.textContent = `Диалог на ${option.dataset.display.toLowerCase()}`;
+      if (isForeignRecording) {
+        foreignStatus.textContent = `${option.dataset.display}: запись идёт…`;
+      }
+    });
 
-    // Статусы
-    function setStatusBadge(el, on){
-      el.className = 'badge ' + (on ? 'ok' : 'off');
-      el.textContent = (on ? '✓' : '✖') + ' ' + (el===micStatusBadge ? 'Mic' : 'WS');
+    function updateStatus(chip, isRecording, label) {
+      chip.classList.toggle('on', isRecording);
+      chip.textContent = isRecording ? `${label}: запись идёт…` : `${label}: ожидание`;
     }
 
-    // Ресемплер PCM
-    const pcmResampler = {
-      inRate: 48000,
-      outRate: SAMPLE_RATE_HZ,
-      pending: new Uint8Array(0),
-      setInRate(sr){ this.inRate = sr || 48000; },
-      feedFloat32(f32mono){
-        const ratio = this.inRate / this.outRate;
-        const outLen = Math.floor(f32mono.length / ratio);
-        if (outLen <= 0) return;
-        const out = new Int16Array(outLen);
-        for (let i=0;i<outLen;i++){
-          const pos = i * ratio;
-          const i0 = Math.floor(pos);
-          const i1 = Math.min(i0+1, f32mono.length-1);
-          const frac = pos - i0;
-          const s = f32mono[i0]*(1-frac) + f32mono[i1]*frac;
-          const clamped = Math.max(-1, Math.min(1, s));
-          out[i] = (clamped * 32767) | 0;
-        }
-        const u8 = new Uint8Array(out.buffer);
-        if (this.pending.length === 0) this.pending = u8;
-        else {
-          const merged = new Uint8Array(this.pending.length + u8.length);
-          merged.set(this.pending, 0); merged.set(u8, this.pending.length);
-          this.pending = merged;
-        }
-      },
-      takeChunkBytes(){
-        const need = Math.floor((this.outRate * CHUNK_DURATION_MS) / 1000) * BYTES_PER_SAMPLE;
-        if (this.pending.length < need) return null;
-        const chunk = this.pending.slice(0, need);
-        this.pending = this.pending.slice(need);
-        return chunk;
-      },
-      takeAll(){ const c=this.pending; this.pending = new Uint8Array(0); return c; }
-    };
-
-    // Вспомогательное: Uint8Array → base64
-    function toBase64(u8){
-      let bin=''; for(let i=0;i<u8.length;i++) bin += String.fromCharCode(u8[i]);
-      return btoa(bin);
+    function toggleButtonState(button, isActive) {
+      button.classList.toggle('active', isActive);
+      button.disabled = isActive;
     }
 
-    // Состояние соединения/аудио
-    let socket = null, micStream=null, audioContext=null, scriptProcessor=null;
-
-    function sendJsonMessage(obj){
-      if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(obj));
-    }
-
-    // Буфер текстов по сегментам
-    const segmentsMap = new Map();
-    let activeSegmentId = null;
-
-    function ensureSegment(id){
-      if (!segmentsMap.has(id)) segmentsMap.set(id, {asr:'', tr:''});
-      return segmentsMap.get(id);
-    }
-    function getSegment(id){
-      return segmentsMap.get(id) || null;
-    }
-    function replaceLastLine(cur, txt){
-      if (!cur) return txt || '';
-      const parts = cur.split('\n');
-      parts[parts.length - 1] = txt || '';
-      return parts.join('\n');
-    }
-    function renderTextPanels(){
-      asrBox.value = [...segmentsMap.values()].map(v => v.asr).join('\n');
-      mtBox.value  = [...segmentsMap.values()].map(v => v.tr ).join('\n');
-    }
-
-    function sendAudioChunk(u8){
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type:'chunk', seq: ++chunkSeq, data: toBase64(u8) }));
+    function ensureDialogPlaceholder(container) {
+      if (!container.querySelector('.bubble') && !container.querySelector('.empty-state')) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.innerHTML = '<strong>Пока что пусто</strong>Нажмите «Вкл запись» для начала новой реплики.';
+        container.appendChild(empty);
       }
     }
 
-    // Инициализация аудиозахвата
-    async function initAudioCapture() {
-      micStream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
+    function clearPlaceholders() {
+      [foreignDialog, russianDialog].forEach(container => {
+        const empty = container.querySelector('.empty-state');
+        if (empty) empty.remove();
       });
-      setStatusBadge(micStatusBadge, true);
-      audioContext = new (window.AudioContext||window.webkitAudioContext)({ sampleRate: 48000 });
-      pcmResampler.setInRate(audioContext.sampleRate);
-      const source = audioContext.createMediaStreamSource(micStream);
-      scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
-      scriptProcessor.onaudioprocess = (e) => {
-        const ch0 = e.inputBuffer.getChannelData(0);
-        const copy = new Float32Array(ch0.length); copy.set(ch0);
-        handleAudioBlock(copy);
+    }
+
+    function renderConversation() {
+      foreignDialog.innerHTML = '';
+      russianDialog.innerHTML = '';
+
+      if (conversation.length === 0) {
+        ensureDialogPlaceholder(foreignDialog);
+        ensureDialogPlaceholder(russianDialog);
+        return;
+      }
+
+      conversation.forEach(entry => {
+        const foreignBubble = document.createElement('div');
+        foreignBubble.className = 'bubble ' + (entry.direction === 'foreign' ? 'from-foreign' : 'from-russian');
+        foreignBubble.textContent = entry.foreignText || '—';
+
+        const russianBubble = document.createElement('div');
+        russianBubble.className = 'bubble ' + (entry.direction === 'russian' ? 'from-russian' : 'from-foreign');
+        russianBubble.textContent = entry.russianText || '—';
+
+        foreignDialog.appendChild(foreignBubble);
+        russianDialog.appendChild(russianBubble);
+      });
+    }
+
+    function promptReplica(direction) {
+      const languageName = languageSelect.options[languageSelect.selectedIndex].dataset.display;
+      const isForeign = direction === 'foreign';
+
+      const originalPrompt = isForeign
+        ? `Введите текст реплики на ${languageName.toLowerCase()}:`
+        : 'Введите текст реплики на русском:';
+      const translationPrompt = isForeign
+        ? 'Введите перевод реплики на русский:'
+        : `Введите перевод реплики на ${languageName.toLowerCase()}:`;
+
+      const originalText = window.prompt(originalPrompt, '');
+      if (originalText === null) {
+        return; // отмена ввода
+      }
+
+      const translatedText = window.prompt(translationPrompt, '');
+      if (translatedText === null) {
+        return; // отмена ввода
+      }
+
+      const entry = {
+        direction,
+        foreignText: isForeign ? originalText.trim() : translatedText.trim(),
+        russianText: isForeign ? translatedText.trim() : originalText.trim()
       };
-      source.connect(scriptProcessor);
-      scriptProcessor.connect(audioContext.destination);
+
+      conversation.push(entry);
+      clearPlaceholders();
+      renderConversation();
     }
 
-    function handleAudioBlock(f32mono){
-      pcmResampler.feedFloat32(f32mono);
-      let chunk;
-      while ((chunk = pcmResampler.takeChunkBytes())){
-        sendAudioChunk(chunk);
-      }
-    }
-
-    // Голосовой режим: старт/сообщения/стоп
-    async function startVoiceMode(){
-      socket = new WebSocket(WS_ENDPOINT);
-      setStatusBadge(wsStatusBadge, false);
-      socket.onopen = async () => {
-        setStatusBadge(wsStatusBadge, true);
-        await initAudioCapture();
-        chunkSeq = 0; segmentsMap.clear(); activeSegmentId = null; asrBox.value=''; mtBox.value='';
-        const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
-        const dst = (outputLangSelect.value||'').toLowerCase();
-        sendJsonMessage({ type:'start', inLang: src, outLang: dst, mime:'audio/pcm', sampleRate: SAMPLE_RATE_HZ });
-        recordBtn.textContent = '■ Остановить';
-      };
-      socket.onclose = () => { setStatusBadge(wsStatusBadge,false); cleanupAudioCapture(); recordBtn.textContent='▶︎ Начать запись'; };
-      socket.onerror = () => { setStatusBadge(wsStatusBadge,false); };
-      socket.onmessage = handleSocketMessageVoice;
-    }
-
-    function handleSocketMessageVoice(ev){
-      try{
-        const m = JSON.parse(ev.data);
-        if (!m.type) return;
-        if (m.seg_id != null) activeSegmentId = m.seg_id;
-        const seg = ensureSegment(activeSegmentId ?? 1);
-        switch (m.type) {
-          case 'asr_partial':
-            seg.asr = replaceLastLine(seg.asr, m.src || '');
-            break;
-          case 'tr_partial':
-            seg.tr  = replaceLastLine(seg.tr,  m.tr  || '');
-            break;
-          case 'asr_final':
-            seg.asr = replaceLastLine(seg.asr, m.src || '');
-            break;
-          case 'tr_final':
-            seg.tr  = replaceLastLine(seg.tr,  m.tr  || '');
-            break;
-          case 'error':
-            mtBox.value += (mtBox.value.endsWith('\n')?'':'\n') + '[ERR] ' + (m.error || m.message || '') + '\n';
-            break;
-        }
-        renderTextPanels();
-      }catch(_){}
-    }
-
-    async function stopVoiceMode(){
-      const tail = pcmResampler.takeAll();
-      if (tail && tail.length) sendAudioChunk(tail);
-      sendJsonMessage({ type:'stop' });
-      if (socket && socket.readyState === WebSocket.OPEN) socket.close();
-      cleanupAudioCapture();
-      recordBtn.textContent = '▶︎ Начать запись';
-    }
-
-    function cleanupAudioCapture(){
-      try{ if (scriptProcessor){ scriptProcessor.disconnect(); scriptProcessor.onaudioprocess=null; } }catch(_){}
-      try{ if (audioContext){ audioContext.close(); } }catch(_){}
-      try{ if (micStream){ micStream.getTracks().forEach(t=>t.stop()); } }catch(_){}
-      scriptProcessor=null; audioContext=null; micStream=null;
-      setStatusBadge(micStatusBadge,false);
-    }
-
-    // Переключение режима
-    function setActiveMode(newMode){
-      activeMode = newMode;
-      voiceModeBtn.classList.toggle('active', activeMode==='voice');
-      textModeBtn.classList.toggle('active',  activeMode==='text');
-      const v = inputLangSelect.value;
-      const voiceAllowed = !(v.startsWith('ky-') || v.startsWith('tg-'));
-      asrBox.readOnly = activeMode !== 'text';
-      recordBtn.classList.toggle('muted', activeMode==='text' || !voiceAllowed);
-      if (activeMode==='text'){
-        cleanupAudioCapture();
-        if (!socket || socket.readyState !== WebSocket.OPEN){
-          socket = new WebSocket(WS_ENDPOINT);
-          setStatusBadge(wsStatusBadge,false);
-          socket.onopen = () => {
-            setStatusBadge(wsStatusBadge,true);
-            segmentsMap.clear(); activeSegmentId=null; asrBox.value=''; mtBox.value='';
-            const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
-            const dst = (outputLangSelect.value||'').toLowerCase();
-            sendJsonMessage({ type:'text_begin', inLang: src, outLang: dst });
-          };
-          socket.onclose = () => { setStatusBadge(wsStatusBadge,false); };
-          socket.onerror = () => { setStatusBadge(wsStatusBadge,false); };
-          socket.onmessage = handleSocketMessageText;
-        } else {
-          const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
-          const dst = (outputLangSelect.value||'').toLowerCase();
-          sendJsonMessage({ type:'text_begin', inLang: src, outLang: dst });
-        }
-      } else {
-        if (socket && socket.readyState === WebSocket.OPEN) { try{ socket.close(); }catch(_){ } }
-        setStatusBadge(wsStatusBadge,false);
-      }
-    }
-
-    // Обработка сообщений в текстовом режиме
-    function handleSocketMessageText(ev){
-      try{
-        const m = JSON.parse(ev.data);
-        if (!m.type) return;
-        if (m.type === 'tr_partial' || m.type === 'tr_final'){
-          const id = (typeof m.seg_id==='number') ? m.seg_id : 1;
-          const seg = ensureSegment(id);
-          if (m.type === 'tr_partial') seg.tr = replaceLastLine(seg.tr, m.tr || '');
-          else seg.tr = replaceLastLine(seg.tr, m.tr || '');
-          renderTextPanels();
-        }
-      }catch(_){}
-    }
-
-    // Ввод текста (дебаунс/сегментация)
-    let lastTextLineCount = 0;
-    let textInputDebounce = null;
-
-    function handleTextModeInput(){
-      const lines = asrBox.value.split('\n');
-      for (let i=0;i<lines.length;i++){
-        const seg = ensureSegment(i+1);
-        seg.asr = lines[i];
-      }
-      const toDelete = [];
-      segmentsMap.forEach((_, k) => { if (k > lines.length) toDelete.push(k); });
-      toDelete.forEach(k => segmentsMap.delete(k));
-      renderTextPanels();
-      const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
-      const dst = (outputLangSelect.value||'').toLowerCase();
-      const curSegId = Math.max(lines.length, 1);
-      const curLine = lines[lines.length-1] || '';
-      if (textInputDebounce) clearTimeout(textInputDebounce);
-      textInputDebounce = setTimeout(() => {
-        sendJsonMessage({ type:'text_partial', seg_id: curSegId, inLang: src, outLang: dst, text: curLine });
-      }, 120);
-      if (lines.length > lastTextLineCount){
-        const prevId = lines.length - 1;
-        if (prevId >= 1){
-          const prevLine = lines[prevId-1] || '';
-          sendJsonMessage({ type:'text_final', seg_id: prevId, inLang: src, outLang: dst, text: prevLine });
-        }
-      }
-      lastTextLineCount = lines.length;
-    }
-
-    // События UI
-    asrBox.addEventListener('input', () => { if (activeMode==='text') handleTextModeInput(); });
-
-    recordBtn.addEventListener('click', async()=>{
-      if (activeMode!=='voice') return;
-      const v = inputLangSelect.value;
-      const voiceAllowed = !(v.startsWith('ky-') || v.startsWith('tg-'));
-      if (!voiceAllowed) return;
-      if (recordBtn.textContent.includes('Остановить')) await stopVoiceMode();
-      else await startVoiceMode();
+    foreignStartBtn.addEventListener('click', () => {
+      if (isForeignRecording) return;
+      isForeignRecording = true;
+      toggleButtonState(foreignStartBtn, true);
+      foreignStopBtn.disabled = false;
+      updateStatus(foreignStatus, true, languageSelect.options[languageSelect.selectedIndex].dataset.display);
     });
 
-    voiceModeBtn.addEventListener('click', () => setActiveMode('voice'));
-    textModeBtn.addEventListener('click', () => setActiveMode('text'));
-
-    inputLangSelect.addEventListener('change', () => {
-      const voiceAllowed = !(inputLangSelect.value.startsWith('ky-') || inputLangSelect.value.startsWith('tg-'));
-      if (activeMode==='voice' && !voiceAllowed) setActiveMode('text');
-      recordBtn.classList.toggle('muted', activeMode==='text' || !voiceAllowed);
-      if (activeMode==='text') {
-        const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
-        const dst = (outputLangSelect.value||'').toLowerCase();
-        sendJsonMessage({ type:'text_begin', inLang: src, outLang: dst });
-      }
+    foreignStopBtn.addEventListener('click', () => {
+      if (!isForeignRecording) return;
+      isForeignRecording = false;
+      toggleButtonState(foreignStartBtn, false);
+      updateStatus(foreignStatus, false, languageSelect.options[languageSelect.selectedIndex].dataset.display);
+      promptReplica('foreign');
     });
 
-    outputLangSelect.addEventListener('change', () => {
-      if (activeMode==='text') {
-        const src = (inputLangSelect.value||'').split('-')[0].toLowerCase();
-        const dst = (outputLangSelect.value||'').toLowerCase();
-        sendJsonMessage({ type:'text_begin', inLang: src, outLang: dst });
-      }
+    russianStartBtn.addEventListener('click', () => {
+      if (isRussianRecording) return;
+      isRussianRecording = true;
+      toggleButtonState(russianStartBtn, true);
+      russianStopBtn.disabled = false;
+      updateStatus(russianStatus, true, 'Русский собеседник');
     });
 
-    if (location.protocol!=='https:' && location.hostname!=='localhost'){
-      console.warn('Для микрофона нужен HTTPS или localhost.');
-    }
+    russianStopBtn.addEventListener('click', () => {
+      if (!isRussianRecording) return;
+      isRussianRecording = false;
+      toggleButtonState(russianStartBtn, false);
+      updateStatus(russianStatus, false, 'Русский собеседник');
+      promptReplica('russian');
+    });
+
+    foreignStopBtn.disabled = true;
+    russianStopBtn.disabled = true;
+
+    ensureDialogPlaceholder(foreignDialog);
+    ensureDialogPlaceholder(russianDialog);
   </script>
 </body>
 </html>

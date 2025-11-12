@@ -5,73 +5,412 @@
   <title>Realtime translator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-    body { margin: 24px; background: #f2f8ff; color:#172033; }
-    h2 { margin: 0 0 20px; }
-    h3 { margin: 0; font-size: 18px; }
-    .row { display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
-    label { font-size:14px; }
-    select, button { padding:10px 14px; font-size:14px; border-radius:10px; border:1px solid #c9d7ee; background:#fff; }
-    button { cursor:pointer; box-shadow: 0 1px 2px rgba(0,0,0,.05); transition: background .2s, transform .2s; }
-    button:active { transform: translateY(1px); }
-    button.toggle.active { background:#eaf2ff; border-color:#9fb9f7; font-weight:600; }
-    button.toggle.muted, button:disabled { opacity:.45; cursor:not-allowed; box-shadow:none; }
-    .statusline { display:flex; gap:10px; align-items:center; margin: 4px 0 24px; flex-wrap:wrap; }
-    .badge { display:inline-flex; align-items:center; gap:6px; padding: 2px 10px; border-radius:999px; font-size:12px; font-weight:600; }
-    .ok  { background:#e8fbef; color:#0a7a2f; border:1px solid #bfe8cb; }
-    .off { background:#fee; color:#822; border:1px solid #f7c8c8; }
-    .status-text { font-size:14px; color:#3e4a66; }
-    .cols { display:grid; grid-template-columns: 1fr 1fr; gap:28px; }
-    .dialog { min-height:360px; background:#fff; border-radius:16px; border:1px solid #d7e4ff; padding:18px; display:flex; flex-direction:column; gap:14px; box-shadow:0 1px 3px rgba(15,42,93,0.06); overflow-y:auto; }
-    .msg { display:flex; flex-direction:column; gap:6px; padding:10px 14px; border-radius:12px; border:1px solid rgba(156,177,222,.4); background:#f8fbff; }
-    .msg.speaker-foreign { border-color:#9fb9f7; background:#eef3ff; }
-    .msg.speaker-russian { border-color:#8ed4b2; background:#edfbf3; }
-    .msg-meta { font-size:12px; font-weight:600; color:#4861a5; text-transform:uppercase; letter-spacing:0.06em; }
-    .msg-text { font-size:15px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
-    .msg.partial .msg-text { opacity:.75; }
-    .empty { font-size:14px; color:#6e7da5; }
-    @media (max-width: 980px){ .cols{ grid-template-columns:1fr; } }
+    :root {
+      color-scheme: light;
+      font-family: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+      --bg-gradient: radial-gradient(circle at 0% 0%, #f8fbff 0, #eff3ff 36%, #f4f4ff 100%);
+      --panel-bg: rgba(255, 255, 255, 0.86);
+      --panel-border: rgba(138, 157, 208, 0.3);
+      --accent-foreign: #e6edff;
+      --accent-russian: #e7f8ef;
+      --accent-foreign-border: rgba(119, 143, 220, 0.55);
+      --accent-russian-border: rgba(90, 191, 139, 0.55);
+      --accent-partial: rgba(98, 112, 164, 0.25);
+      --text-muted: #5c688c;
+      --text-strong: #12213b;
+      --shadow-soft: 0 24px 60px rgba(33, 57, 119, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 32px 16px 48px;
+      background: var(--bg-gradient);
+      color: var(--text-strong);
+      display: flex;
+      justify-content: center;
+    }
+
+    .app {
+      width: min(1140px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    header {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--shadow-soft);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 700;
+    }
+
+    header p {
+      margin: 0;
+      font-size: 15px;
+      color: var(--text-muted);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+
+    label span {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    select, button, textarea {
+      font: inherit;
+    }
+
+    select {
+      min-width: 220px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--panel-border);
+      background: #fff;
+      appearance: none;
+      box-shadow: 0 8px 18px rgba(64, 90, 180, 0.08);
+    }
+
+    .record-controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button.toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 14px;
+      border: 1px solid var(--panel-border);
+      background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(239,244,255,0.95) 100%);
+      padding: 12px 18px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--text-strong);
+      cursor: pointer;
+      transition: transform .2s ease, box-shadow .2s ease, background .2s ease, opacity .2s ease;
+      box-shadow: 0 14px 30px rgba(69, 95, 175, 0.12);
+    }
+
+    button.toggle span {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+
+    button.toggle:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 36px rgba(69, 95, 175, 0.16);
+    }
+
+    button.toggle:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 12px 24px rgba(69, 95, 175, 0.14);
+    }
+
+    button.toggle.active {
+      background: linear-gradient(135deg, #4164dd 0%, #5f8fff 100%);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 20px 36px rgba(58, 93, 208, 0.35);
+    }
+
+    button.toggle.muted,
+    button.toggle:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .statusline {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+    }
+
+    .badge.ok {
+      background: rgba(105, 213, 148, 0.18);
+      color: #0d7f3b;
+      border-color: rgba(58, 172, 104, 0.4);
+    }
+
+    .badge.off {
+      background: rgba(225, 104, 123, 0.12);
+      color: #822d41;
+      border-color: rgba(197, 90, 107, 0.35);
+    }
+
+    .active-status {
+      font-weight: 600;
+      color: var(--text-strong);
+    }
+
+    .cols {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 28px;
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: var(--panel-bg);
+      border-radius: 24px;
+      border: 1px solid var(--panel-border);
+      padding: 24px;
+      box-shadow: var(--shadow-soft);
+      min-height: 420px;
+    }
+
+    .stack h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .dialog {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .dialog::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .dialog::-webkit-scrollbar-thumb {
+      background: rgba(98, 124, 198, 0.26);
+      border-radius: 4px;
+    }
+
+    .msg {
+      max-width: 84%;
+      border-radius: 18px;
+      padding: 12px 16px;
+      font-size: 15px;
+      line-height: 1.5;
+      word-break: break-word;
+      white-space: pre-wrap;
+      border: 1px solid transparent;
+      box-shadow: 0 10px 18px rgba(25, 47, 104, 0.12);
+    }
+
+    .msg.from-foreign {
+      align-self: flex-start;
+      background: var(--accent-foreign);
+      border-color: var(--accent-foreign-border);
+    }
+
+    .msg.from-russian {
+      align-self: flex-end;
+      background: var(--accent-russian);
+      border-color: var(--accent-russian-border);
+    }
+
+    .msg.partial {
+      box-shadow: 0 10px 24px rgba(31, 60, 135, 0.16);
+      background-image: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 100%);
+      border-color: var(--accent-partial);
+      opacity: 0.8;
+    }
+
+    .empty {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 60px;
+    }
+
+    .text-input {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 4px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(236, 240, 255, 0.6);
+      border: 1px dashed rgba(123, 148, 220, 0.4);
+    }
+
+    .text-input.hidden {
+      display: none;
+    }
+
+    .text-input textarea {
+      width: 100%;
+      min-height: 80px;
+      border-radius: 12px;
+      border: 1px solid rgba(147, 168, 232, 0.7);
+      padding: 12px 14px;
+      resize: vertical;
+      font-size: 15px;
+      background: #fff;
+      box-shadow: inset 0 1px 2px rgba(31, 60, 135, 0.08);
+    }
+
+    .text-input textarea:focus {
+      outline: none;
+      border-color: #5f8fff;
+      box-shadow: 0 0 0 3px rgba(107, 151, 255, 0.28);
+    }
+
+    .text-input .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .text-input .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.03em;
+    }
+
+    .send-btn {
+      margin-left: auto;
+      border-radius: 12px;
+      border: none;
+      padding: 10px 18px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #4d7bff 0%, #6b9dff 100%);
+      color: #fff;
+      box-shadow: 0 14px 26px rgba(60, 100, 210, 0.28);
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+
+    .send-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 32px rgba(60, 100, 210, 0.36);
+    }
+
+    .send-btn:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 12px 22px rgba(60, 100, 210, 0.28);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    @media (max-width: 980px) {
+      body {
+        padding: 24px 12px 36px;
+      }
+
+      .cols {
+        grid-template-columns: 1fr;
+      }
+
+      .msg {
+        max-width: 92%;
+      }
+    }
   </style>
 </head>
 <body>
-  <h2>Голосовой ассистент переводчик</h2>
+  <div class="app">
+    <header>
+      <h1>Голосовой ассистент-переводчик</h1>
+      <p>Выберите язык второго участника, запускайте запись по кнопке и получайте синхронный перевод в обе стороны.</p>
+      <div class="controls">
+        <label>
+          <span>Язык второго участника</span>
+          <select id="partnerLang">
+            <option value="kk-KZ" data-label="Қазақ тілі" data-short="KK" selected>Қазақ тілі · KK</option>
+            <option value="en-US" data-label="English" data-short="EN">English · EN</option>
+            <option value="uz-UZ" data-label="O‘zbek" data-short="UZ">O‘zbek · UZ</option>
+            <option value="ky-KG" data-label="Кыргызча" data-short="KY" data-text="true">Кыргызча · KY (текст)</option>
+            <option value="tg-TJ" data-label="Тоҷикӣ" data-short="TG" data-text="true">Тоҷикӣ · TG (текст)</option>
+          </select>
+        </label>
 
-  <div class="row">
-    <label>Язык собеседника:&nbsp;
-      <select id="partnerLang">
-        <option value="kk-KZ" selected>Қазақ тілі (KK)</option>
-        <option value="en-US">English (EN)</option>
-        <option value="uz-UZ">O‘zbek (UZ)</option>
-        <option value="ky-KG">Кыргызча (KY) — только текст</option>
-        <option value="tg-TJ">Тоҷикӣ (TG) — только текст</option>
-        <option value="de-DE">Deutsch (DE)</option>
-        <option value="zh-CN">中文 (ZH)</option>
-      </select>
-    </label>
-  </div>
-
-  <div class="row">
-    <button id="partnerBtn" class="toggle">▶︎ Собеседник говорит</button>
-    <button id="russianBtn" class="toggle">▶︎ Русский говорит</button>
-  </div>
-
-  <div class="statusline">
-    <span id="micBadge" class="badge off">✖ Mic</span>
-    <span id="wsBadge"  class="badge off">✖ WS</span>
-    <span id="activeStatus" class="status-text">Ожидание</span>
-  </div>
-
-  <div class="cols">
-    <div class="stack">
-      <h3 id="foreignTitle">Диалог на <span id="foreignLangLabel">Қазақ тілі (KK)</span></h3>
-      <div id="foreignLog" class="dialog">
-        <div class="empty">Пока нет реплик</div>
+        <div class="record-controls">
+          <button id="partnerBtn" class="toggle"><span id="partnerBtnIcon">▶︎</span><span id="partnerBtnLabel">Қазақ тілі</span></button>
+          <button id="russianBtn" class="toggle"><span id="russianBtnIcon">▶︎</span><span>RU</span></button>
+        </div>
       </div>
-    </div>
-    <div class="stack">
-      <h3>Диалог на русском</h3>
-      <div id="russianLog" class="dialog">
-        <div class="empty">Пока нет реплик</div>
+
+      <div class="statusline">
+        <span id="micBadge" class="badge off">✖ Mic</span>
+        <span id="wsBadge" class="badge off">✖ WS</span>
+        <span class="active-status" id="activeStatus">Ожидание</span>
+      </div>
+    </header>
+
+    <div class="cols">
+      <div class="stack">
+        <h3 id="foreignTitle">Қазақ тілі</h3>
+        <div id="foreignLog" class="dialog">
+          <div class="empty">Диалог пока пуст</div>
+        </div>
+        <div id="textInputPanel" class="text-input hidden">
+          <textarea id="textInput" placeholder="Введите сообщение для перевода"></textarea>
+          <div class="actions">
+            <span class="hint">Shift + Enter — новая строка</span>
+            <button id="textSendBtn" class="send-btn">Отправить</button>
+          </div>
+        </div>
+      </div>
+      <div class="stack">
+        <h3>RU</h3>
+        <div id="russianLog" class="dialog">
+          <div class="empty">Диалог пока пуст</div>
+        </div>
       </div>
     </div>
   </div>
@@ -79,95 +418,179 @@
   <script>
     const WS_ENDPOINT = 'wss://158.160.185.219.sslip.io/ws-local';
     const SAMPLE_RATE_HZ = 48000;
-    const CHUNK_DURATION_MS  = 100;
+    const CHUNK_DURATION_MS = 100;
     const BYTES_PER_SAMPLE = 2;
 
-    let chunkSeq = 0;
+    const TEXT_SESSION_BASE = 'text-foreign';
 
     const partnerLangSelect = document.getElementById('partnerLang');
     const partnerBtn = document.getElementById('partnerBtn');
+    const partnerBtnLabel = document.getElementById('partnerBtnLabel');
+    const partnerBtnIcon = document.getElementById('partnerBtnIcon');
     const russianBtn = document.getElementById('russianBtn');
+    const russianBtnIcon = document.getElementById('russianBtnIcon');
     const micStatusBadge = document.getElementById('micBadge');
-    const wsStatusBadge  = document.getElementById('wsBadge');
+    const wsStatusBadge = document.getElementById('wsBadge');
     const activeStatus = document.getElementById('activeStatus');
-    const foreignLangLabel = document.getElementById('foreignLangLabel');
+    const foreignTitle = document.getElementById('foreignTitle');
     const foreignLog = document.getElementById('foreignLog');
     const russianLog = document.getElementById('russianLog');
+    const textInputPanel = document.getElementById('textInputPanel');
+    const textInput = document.getElementById('textInput');
+    const textSendBtn = document.getElementById('textSendBtn');
 
-    function setStatusBadge(el, on){
+    let chunkSeq = 0;
+    let socket = null;
+    let textSocket = null;
+    let textSocketPromise = null;
+    let micStream = null;
+    let audioContext = null;
+    let audioSource = null;
+    let scriptProcessor = null;
+    let micInitialized = false;
+    let isCapturingAudio = false;
+
+    let currentDirection = null;
+    let sessionCounter = 0;
+    let activeSessionId = null;
+
+    let textSegCounter = 0;
+    const textSegToSession = new Map();
+
+    const sessionDirectionMap = new Map();
+    const conversationIndex = new Map();
+    const conversationOrder = [];
+
+    function getLangMeta(value) {
+      const option = [...partnerLangSelect.options].find((opt) => opt.value === value);
+      if (!option) return null;
+      return {
+        label: option.dataset.label || option.textContent,
+        short: option.dataset.short || (value.split('-')[0] || '').toUpperCase(),
+        textOnly: option.dataset.text === 'true'
+      };
+    }
+
+    function isPartnerTextOnly() {
+      const meta = getLangMeta(partnerLangSelect.value);
+      return !!(meta && meta.textOnly);
+    }
+
+    function getPartnerLabel() {
+      const meta = getLangMeta(partnerLangSelect.value);
+      return meta ? meta.label : 'Партнёр';
+    }
+
+    function getPartnerShort() {
+      const meta = getLangMeta(partnerLangSelect.value);
+      return meta ? meta.short : '??';
+    }
+
+    function refreshWsStatus() {
+      const voiceReady = socket && socket.readyState === WebSocket.OPEN;
+      const textReady = textSocket && textSocket.readyState === WebSocket.OPEN;
+      setStatusBadge(wsStatusBadge, voiceReady || textReady);
+    }
+
+    function setStatusBadge(el, on) {
       el.className = 'badge ' + (on ? 'ok' : 'off');
-      el.textContent = (on ? '✓' : '✖') + ' ' + (el===micStatusBadge ? 'Mic' : 'WS');
+      el.textContent = (on ? '✓' : '✖') + ' ' + (el === micStatusBadge ? 'Mic' : 'WS');
     }
 
     const pcmResampler = {
       inRate: 48000,
       outRate: SAMPLE_RATE_HZ,
       pending: new Uint8Array(0),
-      setInRate(sr){ this.inRate = sr || 48000; },
-      feedFloat32(f32mono){
+      setInRate(sr) {
+        this.inRate = sr || 48000;
+      },
+      feedFloat32(f32mono) {
+        if (!isCapturingAudio) return;
         const ratio = this.inRate / this.outRate;
         const outLen = Math.floor(f32mono.length / ratio);
         if (outLen <= 0) return;
         const out = new Int16Array(outLen);
-        for (let i=0;i<outLen;i++){
+        for (let i = 0; i < outLen; i++) {
           const pos = i * ratio;
           const i0 = Math.floor(pos);
-          const i1 = Math.min(i0+1, f32mono.length-1);
+          const i1 = Math.min(i0 + 1, f32mono.length - 1);
           const frac = pos - i0;
-          const s = f32mono[i0]*(1-frac) + f32mono[i1]*frac;
+          const s = f32mono[i0] * (1 - frac) + f32mono[i1] * frac;
           const clamped = Math.max(-1, Math.min(1, s));
           out[i] = (clamped * 32767) | 0;
         }
         const u8 = new Uint8Array(out.buffer);
-        if (this.pending.length === 0) this.pending = u8;
-        else {
+        if (this.pending.length === 0) {
+          this.pending = u8;
+        } else {
           const merged = new Uint8Array(this.pending.length + u8.length);
-          merged.set(this.pending, 0); merged.set(u8, this.pending.length);
+          merged.set(this.pending, 0);
+          merged.set(u8, this.pending.length);
           this.pending = merged;
         }
       },
-      takeChunkBytes(){
+      takeChunkBytes() {
         const need = Math.floor((this.outRate * CHUNK_DURATION_MS) / 1000) * BYTES_PER_SAMPLE;
         if (this.pending.length < need) return null;
         const chunk = this.pending.slice(0, need);
         this.pending = this.pending.slice(need);
         return chunk;
       },
-      takeAll(){ const c=this.pending; this.pending = new Uint8Array(0); return c; }
+      takeAll() {
+        const c = this.pending;
+        this.pending = new Uint8Array(0);
+        return c;
+      }
     };
 
-    function toBase64(u8){
-      let bin=''; for(let i=0;i<u8.length;i++) bin += String.fromCharCode(u8[i]);
+    function toBase64(u8) {
+      let bin = '';
+      for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
       return btoa(bin);
     }
 
-    let socket = null, micStream=null, audioContext=null, scriptProcessor=null;
-    let currentDirection = null;
-    let sessionCounter = 0;
-    let activeSessionId = null;
-    let activeSegmentId = null;
-
-    const sessionDirectionMap = new Map();
-    const segmentsIndex = new Map();
-    const conversationOrder = [];
-
-    function makeSegmentKey(sessionId, segId){
-      return sessionId + ':' + (segId ?? 1);
-    }
-
-    function ensureSegment(sessionId, segId){
+    function ensureEntry(sessionId) {
       if (!sessionId) return null;
-      const id = segId ?? activeSegmentId ?? 1;
-      const key = makeSegmentKey(sessionId, id);
-      if (!segmentsIndex.has(key)){
-        const seg = { sessionId, segId: id, speaker: sessionDirectionMap.get(sessionId) || 'foreign', src:'', tr:'', finalSrc:false, finalTr:false };
-        segmentsIndex.set(key, seg);
-        conversationOrder.push(seg);
+      if (!conversationIndex.has(sessionId)) {
+        const entry = {
+          sessionId,
+          speaker: sessionDirectionMap.get(sessionId) || 'foreign',
+          srcSegments: new Map(),
+          trSegments: new Map(),
+          finalSrc: new Set(),
+          finalTr: new Set()
+        };
+        conversationIndex.set(sessionId, entry);
+        conversationOrder.push(entry);
       }
-      return segmentsIndex.get(key);
+      return conversationIndex.get(sessionId);
     }
 
-    function renderConversation(){
+    function composeText(segmentsMap) {
+      return [...segmentsMap.keys()].sort((a, b) => a - b).map((key) => segmentsMap.get(key) || '').join('\n');
+    }
+
+    function updateEntrySegments(entry, type, segId, text) {
+      const id = typeof segId === 'number' ? segId : 1;
+      if (type === 'src') {
+        entry.srcSegments.set(id, text || '');
+      } else {
+        entry.trSegments.set(id, text || '');
+      }
+    }
+
+    function markFinal(entry, type, segId, isFinal) {
+      const set = type === 'src' ? entry.finalSrc : entry.finalTr;
+      const id = typeof segId === 'number' ? segId : 1;
+      if (isFinal) set.add(id);
+      else set.delete(id);
+    }
+
+    function entryHasContent(entry) {
+      return entry && (entry.srcSegments.size > 0 || entry.trSegments.size > 0);
+    }
+
+    function renderConversation() {
       const escapeMap = new Map([
         ['&', '&amp;'],
         ['<', '&lt;'],
@@ -175,201 +598,324 @@
         ['"', '&quot;'],
         ["'", '&#39;']
       ]);
-      const escapeHtml = (s) => (s || '').replace(/[&<>"']/g, c => escapeMap.get(c));
+      const escapeHtml = (s) => (s || '').replace(/[&<>"']/g, (c) => escapeMap.get(c));
+
       const foreignItems = [];
       const russianItems = [];
-      conversationOrder.forEach(seg => {
-        const speaker = seg.speaker;
-        const isForeign = speaker === 'foreign';
-        const foreignText = isForeign ? seg.src : seg.tr;
-        const russianText = isForeign ? seg.tr : seg.src;
-        const stateClass = (seg.finalSrc && seg.finalTr) ? '' : ' partial';
-        const foreignMeta = isForeign ? 'Собеседник' : 'Русский';
-        const russianMeta = isForeign ? 'Русский' : 'Собеседник';
-        const foreignHtml = foreignText ? '<div class="msg'+stateClass+' speaker-' + (isForeign ? 'foreign' : 'russian') + '"><div class="msg-meta">' + foreignMeta + '</div><div class="msg-text">' + escapeHtml(foreignText) + '</div></div>' : '';
-        const russianHtml = russianText ? '<div class="msg'+stateClass+' speaker-' + (isForeign ? 'foreign' : 'russian') + '"><div class="msg-meta">' + russianMeta + '</div><div class="msg-text">' + escapeHtml(russianText) + '</div></div>' : '';
-        if (foreignHtml) foreignItems.push(foreignHtml);
-        if (russianHtml) russianItems.push(russianHtml);
+
+      conversationOrder.forEach((entry) => {
+        if (!entryHasContent(entry)) return;
+        const speaker = entry.speaker === 'russian' ? 'russian' : 'foreign';
+        const foreignText = speaker === 'foreign' ? composeText(entry.srcSegments) : composeText(entry.trSegments);
+        const russianText = speaker === 'foreign' ? composeText(entry.trSegments) : composeText(entry.srcSegments);
+        const isForeignPartial = entry.finalSrc.size !== entry.srcSegments.size || entry.finalTr.size !== entry.trSegments.size;
+        const isRussianPartial = isForeignPartial;
+        if (foreignText) {
+          foreignItems.push(`<div class="msg from-${speaker}${isForeignPartial ? ' partial' : ''}">${escapeHtml(foreignText)}</div>`);
+        }
+        if (russianText) {
+          const russianSpeaker = speaker === 'foreign' ? 'foreign' : 'russian';
+          russianItems.push(`<div class="msg from-${russianSpeaker}${isRussianPartial ? ' partial' : ''}">${escapeHtml(russianText)}</div>`);
+        }
       });
-      foreignLog.innerHTML = foreignItems.length ? foreignItems.join('') : '<div class="empty">Пока нет реплик</div>';
-      russianLog.innerHTML = russianItems.length ? russianItems.join('') : '<div class="empty">Пока нет реплик</div>';
+
+      foreignLog.innerHTML = foreignItems.length ? foreignItems.join('') : '<div class="empty">Диалог пока пуст</div>';
+      russianLog.innerHTML = russianItems.length ? russianItems.join('') : '<div class="empty">Диалог пока пуст</div>';
+
       foreignLog.scrollTop = foreignLog.scrollHeight;
       russianLog.scrollTop = russianLog.scrollHeight;
     }
 
-    function sendJsonMessage(obj){
-      if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(obj));
-    }
-
-    function sendAudioChunk(u8){
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type:'chunk', seq: ++chunkSeq, data: toBase64(u8) }));
+    async function ensureAudioSetup() {
+      if (micInitialized) return;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Микрофон недоступен в этом браузере');
       }
-    }
-
-    async function initAudioCapture() {
       micStream = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
       });
-      setStatusBadge(micStatusBadge, true);
-      audioContext = new (window.AudioContext||window.webkitAudioContext)({ sampleRate: 48000 });
+      audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
       pcmResampler.setInRate(audioContext.sampleRate);
-      const source = audioContext.createMediaStreamSource(micStream);
+      audioSource = audioContext.createMediaStreamSource(micStream);
       scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
       scriptProcessor.onaudioprocess = (e) => {
         const ch0 = e.inputBuffer.getChannelData(0);
-        const copy = new Float32Array(ch0.length); copy.set(ch0);
-        handleAudioBlock(copy);
+        const copy = new Float32Array(ch0.length);
+        copy.set(ch0);
+        pcmResampler.feedFloat32(copy);
+        let chunk;
+        while ((chunk = pcmResampler.takeChunkBytes())) {
+          sendAudioChunk(chunk);
+        }
       };
-      source.connect(scriptProcessor);
+      audioSource.connect(scriptProcessor);
       scriptProcessor.connect(audioContext.destination);
+      await audioContext.suspend();
+      micInitialized = true;
+      setStatusBadge(micStatusBadge, false);
     }
 
-    function handleAudioBlock(f32mono){
-      pcmResampler.feedFloat32(f32mono);
-      let chunk;
-      while ((chunk = pcmResampler.takeChunkBytes())){
-        sendAudioChunk(chunk);
+    function cleanupAudioCapture() {
+      isCapturingAudio = false;
+      pcmResampler.takeAll();
+      if (audioContext && audioContext.state === 'running') {
+        audioContext.suspend().catch(() => {});
+      }
+      setStatusBadge(micStatusBadge, false);
+    }
+
+    function sendVoiceMessage(obj) {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(obj));
       }
     }
 
-    function replaceLastLine(cur, txt){
-      if (!cur) return txt || '';
-      const parts = cur.split('\n');
-      parts[parts.length - 1] = txt || '';
-      return parts.join('\n');
+    function sendAudioChunk(u8) {
+      if (socket && socket.readyState === WebSocket.OPEN && isCapturingAudio) {
+        socket.send(JSON.stringify({ type: 'chunk', seq: ++chunkSeq, data: toBase64(u8) }));
+      }
     }
 
-    function handleSocketMessageVoice(ev, sessionId){
-      try{
+    async function ensureTextSocket() {
+      if (textSocket && textSocket.readyState === WebSocket.OPEN) {
+        return textSocket;
+      }
+      if (textSocketPromise) {
+        return textSocketPromise;
+      }
+      textSocketPromise = new Promise((resolve, reject) => {
+        const ws = new WebSocket(WS_ENDPOINT);
+        textSocket = ws;
+        refreshWsStatus();
+
+        const cleanup = () => {
+          if (textSocketPromise) {
+            textSocketPromise = null;
+          }
+          refreshWsStatus();
+        };
+
+        ws.addEventListener('open', () => {
+          if (ws !== textSocket) {
+            cleanup();
+            return reject(new Error('Сокет устарел'));
+          }
+          refreshWsStatus();
+          sendTextBegin();
+          resolve(ws);
+        }, { once: true });
+
+        ws.addEventListener('error', (err) => {
+          if (ws === textSocket) {
+            textSocket = null;
+          }
+          cleanup();
+          reject(err);
+        }, { once: true });
+
+        ws.addEventListener('close', () => {
+          if (ws === textSocket) {
+            textSocket = null;
+          }
+          cleanup();
+        });
+
+        ws.addEventListener('message', handleTextSocketMessage);
+      });
+      return textSocketPromise;
+    }
+
+    function closeTextSocket() {
+      if (textSocket) {
+        try { textSocket.close(); } catch (_) {}
+        textSocket = null;
+      }
+      if (textSocketPromise) {
+        textSocketPromise = null;
+      }
+      refreshWsStatus();
+    }
+
+    function sendTextBegin() {
+      if (!textSocket || textSocket.readyState !== WebSocket.OPEN) return;
+      const inLang = (partnerLangSelect.value.split('-')[0] || 'kk').toLowerCase();
+      textSocket.send(JSON.stringify({ type: 'text_begin', inLang, outLang: 'ru' }));
+    }
+
+    async function sendPartnerText() {
+      if (!isPartnerTextOnly()) return;
+      const text = textInput.value.trim();
+      if (!text) return;
+      textSendBtn.disabled = true;
+      const segId = ++textSegCounter;
+      const sessionId = `${TEXT_SESSION_BASE}-${segId}`;
+      sessionDirectionMap.set(sessionId, 'foreign');
+      const entry = ensureEntry(sessionId);
+      textSegToSession.set(segId, sessionId);
+      updateEntrySegments(entry, 'src', segId, text);
+      markFinal(entry, 'src', segId, true);
+      renderConversation();
+      textInput.value = '';
+      try {
+        const ws = await ensureTextSocket();
+        const inLang = (partnerLangSelect.value.split('-')[0] || 'kk').toLowerCase();
+        ws.send(JSON.stringify({ type: 'text_final', seg_id: segId, inLang, outLang: 'ru', text }));
+      } catch (err) {
+        markFinal(entry, 'tr', segId, true);
+        const fallback = '[ошибка отправки] ' + (err && err.message ? err.message : '');
+        updateEntrySegments(entry, 'tr', segId, fallback);
+        renderConversation();
+      } finally {
+        textSendBtn.disabled = false;
+      }
+    }
+
+    function handleTextSocketMessage(ev) {
+      try {
+        const m = JSON.parse(ev.data);
+        if (!m.type) return;
+        if (m.type === 'tr_partial' || m.type === 'tr_final') {
+          const segId = typeof m.seg_id === 'number' ? m.seg_id : null;
+          const sessionId = segId != null ? textSegToSession.get(segId) : null;
+          if (!sessionId) return;
+          const entry = ensureEntry(sessionId);
+          updateEntrySegments(entry, 'tr', segId, m.tr || '');
+          markFinal(entry, 'tr', segId, m.type === 'tr_final');
+          renderConversation();
+        } else if (m.type === 'error') {
+          const segId = typeof m.seg_id === 'number' ? m.seg_id : null;
+          const sessionId = segId != null ? textSegToSession.get(segId) : null;
+          if (!sessionId) return;
+          const entry = ensureEntry(sessionId);
+          const previous = entry.trSegments.get(segId) || '';
+          updateEntrySegments(entry, 'tr', segId, previous + (previous ? '\n' : '') + '[ERR] ' + (m.error || m.message || ''));
+          markFinal(entry, 'tr', segId, true);
+          renderConversation();
+        }
+      } catch (_) {}
+    }
+
+    function handleSocketMessageVoice(ev, sessionId) {
+      try {
         const m = JSON.parse(ev.data);
         if (!m.type || sessionId !== activeSessionId) return;
-        if (m.seg_id != null) activeSegmentId = m.seg_id;
-        const seg = ensureSegment(sessionId, m.seg_id);
-        if (!seg) return;
+        const entry = ensureEntry(sessionId);
+        if (!entry) return;
         switch (m.type) {
           case 'asr_partial':
-            seg.src = replaceLastLine(seg.src, m.src || '');
-            seg.finalSrc = false;
+            updateEntrySegments(entry, 'src', m.seg_id || 1, m.src || '');
+            markFinal(entry, 'src', m.seg_id || 1, false);
             break;
           case 'tr_partial':
-            seg.tr  = replaceLastLine(seg.tr,  m.tr  || '');
-            seg.finalTr = false;
+            updateEntrySegments(entry, 'tr', m.seg_id || 1, m.tr || '');
+            markFinal(entry, 'tr', m.seg_id || 1, false);
             break;
           case 'asr_final':
-            seg.src = replaceLastLine(seg.src, m.src || '');
-            seg.finalSrc = true;
+            updateEntrySegments(entry, 'src', m.seg_id || 1, m.src || '');
+            markFinal(entry, 'src', m.seg_id || 1, true);
             break;
           case 'tr_final':
-            seg.tr  = replaceLastLine(seg.tr,  m.tr  || '');
-            seg.finalTr = true;
+            updateEntrySegments(entry, 'tr', m.seg_id || 1, m.tr || '');
+            markFinal(entry, 'tr', m.seg_id || 1, true);
             break;
           case 'error':
-            seg.tr = (seg.tr ? seg.tr + '\n' : '') + '[ERR] ' + (m.error || m.message || '');
-            seg.finalTr = true;
+            updateEntrySegments(entry, 'tr', m.seg_id || 1, (entry.trSegments.get(m.seg_id || 1) || '') + '\n[ERR] ' + (m.error || m.message || ''));
+            markFinal(entry, 'tr', m.seg_id || 1, true);
             break;
         }
         renderConversation();
-      }catch(_){ }
+      } catch (_) {}
     }
 
-    function cleanupAudioCapture(){
-      try{ if (scriptProcessor){ scriptProcessor.disconnect(); scriptProcessor.onaudioprocess=null; } }catch(_){ }
-      try{ if (audioContext){ audioContext.close(); } }catch(_){ }
-      try{ if (micStream){ micStream.getTracks().forEach(t=>t.stop()); } }catch(_){ }
-      scriptProcessor=null; audioContext=null; micStream=null;
-      setStatusBadge(micStatusBadge,false);
-    }
-
-    function updateButtonsState(direction){
-      const partnerVoiceAllowed = !(partnerLangSelect.value.startsWith('ky-') || partnerLangSelect.value.startsWith('tg-'));
-      const effectiveDirection = (!partnerVoiceAllowed && direction === 'foreign') ? null : direction;
-      partnerBtn.disabled = !partnerVoiceAllowed && effectiveDirection !== 'foreign';
-      partnerBtn.classList.toggle('muted', !partnerVoiceAllowed && effectiveDirection !== 'foreign');
-      partnerBtn.title = partnerVoiceAllowed ? '' : 'Для этого языка доступен только текстовый режим';
-      partnerBtn.classList.toggle('active', effectiveDirection === 'foreign');
-      russianBtn.classList.toggle('active', effectiveDirection === 'russian');
-      partnerBtn.textContent = effectiveDirection === 'foreign' ? '■ Собеседник говорит' : '▶︎ Собеседник говорит';
-      russianBtn.textContent = effectiveDirection === 'russian' ? '■ Русский говорит' : '▶︎ Русский говорит';
-    }
-
-    function updateStatusText(direction){
-      if (direction === 'foreign') activeStatus.textContent = 'Запись собеседника…';
-      else if (direction === 'russian') activeStatus.textContent = 'Запись русского участника…';
-      else activeStatus.textContent = 'Ожидание';
-    }
-
-    async function startRecording(direction){
+    async function startRecording(direction) {
       if (currentDirection === direction) return;
-      const partnerVoiceAllowed = !(partnerLangSelect.value.startsWith('ky-') || partnerLangSelect.value.startsWith('tg-'));
-      if (direction === 'foreign' && !partnerVoiceAllowed) return;
-      if (socket && socket.readyState !== WebSocket.CLOSED) {
-        try { socket.close(); } catch(_){ }
-      }
-      const sessionId = ++sessionCounter;
-      activeSessionId = sessionId;
+      if (direction === 'foreign' && isPartnerTextOnly()) return;
+
+      await stopRecording();
+
+      const sessionId = `voice-${++sessionCounter}`;
       currentDirection = direction;
-      activeSegmentId = null;
+      activeSessionId = sessionId;
       sessionDirectionMap.set(sessionId, direction);
+      chunkSeq = 0;
+
       updateButtonsState(direction);
       updateStatusText(direction);
-      const inLang = direction === 'foreign' ? (partnerLangSelect.value.split('-')[0] || 'kk').toLowerCase() : 'ru';
-      const outLang = direction === 'foreign' ? 'ru' : (partnerLangSelect.value.split('-')[0] || 'kk').toLowerCase();
+
       socket = new WebSocket(WS_ENDPOINT);
       const localSocket = socket;
-      setStatusBadge(wsStatusBadge, false);
+      refreshWsStatus();
+
       localSocket.addEventListener('message', (ev) => handleSocketMessageVoice(ev, sessionId));
       localSocket.addEventListener('error', () => {
-        if (sessionId === activeSessionId){ setStatusBadge(wsStatusBadge,false); }
+        if (localSocket === socket) {
+          refreshWsStatus();
+        }
       });
       localSocket.addEventListener('close', () => {
-        finalizeStop(sessionId);
+        if (localSocket === socket) {
+          finalizeStop(sessionId);
+        }
       });
       localSocket.addEventListener('open', async () => {
-        if (sessionId !== activeSessionId) return;
-        setStatusBadge(wsStatusBadge, true);
+        if (localSocket !== socket || sessionId !== activeSessionId) return;
+        refreshWsStatus();
         try {
-          await initAudioCapture();
-        } catch (err){
-          activeStatus.textContent = 'Нет доступа к микрофону';
-          setStatusBadge(micStatusBadge, false);
-          try { localSocket.close(); } catch(_){ }
+          await ensureAudioSetup();
+        } catch (err) {
+          activeStatus.textContent = err && err.message ? err.message : 'Нет доступа к микрофону';
+          finalizeStop(sessionId);
           return;
         }
-        chunkSeq = 0;
-        sendJsonMessage({ type:'start', inLang, outLang, mime:'audio/pcm', sampleRate: SAMPLE_RATE_HZ });
+        if (!audioContext) return;
+        await audioContext.resume();
+        isCapturingAudio = true;
+        setStatusBadge(micStatusBadge, true);
+        pcmResampler.takeAll();
+        const inLang = direction === 'foreign' ? (partnerLangSelect.value.split('-')[0] || 'kk').toLowerCase() : 'ru';
+        const outLang = direction === 'foreign' ? 'ru' : (partnerLangSelect.value.split('-')[0] || 'kk').toLowerCase();
+        sendVoiceMessage({ type: 'start', inLang, outLang, mime: 'audio/pcm', sampleRate: SAMPLE_RATE_HZ });
       });
     }
 
-    function finalizeStop(sessionId){
+    function finalizeStop(sessionId) {
       if (sessionId != null && activeSessionId != null && sessionId !== activeSessionId) return;
       cleanupAudioCapture();
-      setStatusBadge(wsStatusBadge,false);
+      if (socket && socket.readyState !== WebSocket.CLOSED) {
+        try { socket.close(); } catch (_) {}
+      }
+      socket = null;
       currentDirection = null;
       activeSessionId = null;
-      activeSegmentId = null;
-      chunkSeq = 0;
-      socket = null;
+      refreshWsStatus();
       updateButtonsState(null);
       updateStatusText(null);
     }
 
     let stopInProgress = false;
 
-    async function stopRecording(){
-      if (!currentDirection || stopInProgress) return;
+    async function stopRecording() {
+      if (!currentDirection || stopInProgress) {
+        return;
+      }
       stopInProgress = true;
       const sessionId = activeSessionId;
       const tail = pcmResampler.takeAll();
       if (tail && tail.length) sendAudioChunk(tail);
-      sendJsonMessage({ type:'stop' });
+      sendVoiceMessage({ type: 'stop' });
+      cleanupAudioCapture();
       if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
         const wsForStop = socket;
         await new Promise((resolve) => {
           const onClose = () => resolve();
           wsForStop.addEventListener('close', onClose, { once: true });
-          try { wsForStop.close(); }
-          catch(_){ wsForStop.removeEventListener('close', onClose); finalizeStop(sessionId); resolve(); }
+          try {
+            wsForStop.close();
+          } catch (_) {
+            wsForStop.removeEventListener('close', onClose);
+            finalizeStop(sessionId);
+            resolve();
+          }
         });
       } else {
         finalizeStop(sessionId);
@@ -377,11 +923,54 @@
       stopInProgress = false;
     }
 
+    function updateButtonsState(direction) {
+      const label = getPartnerLabel();
+      partnerBtnLabel.textContent = label;
+      const textOnly = isPartnerTextOnly();
+      partnerBtn.disabled = textOnly;
+      partnerBtn.classList.toggle('muted', textOnly);
+      partnerBtn.classList.toggle('active', direction === 'foreign');
+      russianBtn.classList.toggle('active', direction === 'russian');
+      partnerBtnIcon.textContent = textOnly ? '✎' : (direction === 'foreign' ? '■' : '▶︎');
+      russianBtnIcon.textContent = direction === 'russian' ? '■' : '▶︎';
+    }
+
+    function updateStatusText(direction) {
+      if (direction === 'foreign') {
+        activeStatus.textContent = `Запись: ${getPartnerShort()}`;
+      } else if (direction === 'russian') {
+        activeStatus.textContent = 'Запись: RU';
+      } else {
+        activeStatus.textContent = 'Ожидание';
+      }
+    }
+
+    function updateTextInputVisibility() {
+      const textOnly = isPartnerTextOnly();
+      textInputPanel.classList.toggle('hidden', !textOnly);
+      textSendBtn.disabled = !textOnly;
+      if (!textOnly) {
+        textInput.value = '';
+        closeTextSocket();
+        textSegCounter = 0;
+        textSegToSession.clear();
+      }
+    }
+
+    function resetConversation() {
+      sessionDirectionMap.clear();
+      conversationIndex.clear();
+      conversationOrder.length = 0;
+      textSegCounter = 0;
+      textSegToSession.clear();
+      renderConversation();
+    }
+
     partnerBtn.addEventListener('click', async () => {
+      if (isPartnerTextOnly()) return;
       if (currentDirection === 'foreign') {
         await stopRecording();
       } else {
-        await stopRecording();
         await startRecording('foreign');
       }
     });
@@ -390,29 +979,38 @@
       if (currentDirection === 'russian') {
         await stopRecording();
       } else {
-        await stopRecording();
         await startRecording('russian');
       }
     });
 
     partnerLangSelect.addEventListener('change', async () => {
-      const opt = partnerLangSelect.options[partnerLangSelect.selectedIndex];
-      const label = opt ? opt.textContent.replace(' — только текст','') : '';
-      if (foreignLangLabel) foreignLangLabel.textContent = label;
-      if (currentDirection) {
-        await stopRecording();
-      }
-      sessionDirectionMap.clear();
-      conversationOrder.length = 0;
-      segmentsIndex.clear();
-      renderConversation();
+      foreignTitle.textContent = getPartnerLabel();
       updateButtonsState(null);
+      updateStatusText(null);
+      updateTextInputVisibility();
+      await stopRecording();
+      closeTextSocket();
+      resetConversation();
+      sendTextBegin();
     });
 
+    textSendBtn.addEventListener('click', () => {
+      sendPartnerText();
+    });
+
+    textInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendPartnerText();
+      }
+    });
+
+    foreignTitle.textContent = getPartnerLabel();
     updateButtonsState(null);
+    updateTextInputVisibility();
     renderConversation();
 
-    if (location.protocol!=='https:' && location.hostname!=='localhost'){
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
       console.warn('Для микрофона нужен HTTPS или localhost.');
     }
   </script>
